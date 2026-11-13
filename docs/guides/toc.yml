@@ -2,6 +2,8 @@
   items:
   - name: Settings and secrets
     href: settings.md
+  - name: Moving build-time placeholders into AppHost parameters
+    href: placeholders.md
   - name: Building in a pipeline
     href: pipelines.md
   - name: Several services in one package

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 889 256" role="img" aria-label="Aspirin">
+  <defs>
+    <linearGradient id="sweep" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#14b886" />
+      <stop offset="1" stop-color="#22d39c" />
+    </linearGradient>
+    <linearGradient id="capsule-blue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f9bff" />
+      <stop offset="1" stop-color="#0b63d6" />
+    </linearGradient>
+    <linearGradient id="capsule-white" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#d9e3f0" />
+    </linearGradient>
+    <linearGradient id="flap-left" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7cd2fb" />
+      <stop offset="1" stop-color="#4fb3f6" />
+    </linearGradient>
+    <linearGradient id="flap-right" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fdcff" />
+      <stop offset="1" stop-color="#5bbcf7" />
+    </linearGradient>
+    <clipPath id="capsule-shape">
+      <rect x="-74" y="-31" width="148" height="62" rx="31" />
+    </clipPath>
+  </defs>
+  <path d="M84 206 C 22 190 12 120 70 90 C 110 70 176 60 214 58" fill="none" stroke="url(#sweep)" stroke-width="15"
+    stroke-linecap="round" />
+  <path d="M210 36 L 250 57 L 210 80 Z" fill="#22d39c" stroke="#22d39c" stroke-width="4" stroke-linejoin="round" />
+  <path d="M58 132 L 128 108 L 198 132 L 128 156 Z" fill="#0a3f8f" />
+  <g transform="translate(132 104) rotate(-32)">
+    <g clip-path="url(#capsule-shape)">
+      <rect x="-74" y="-31" width="74" height="62" fill="url(#capsule-blue)" />
+      <rect x="0" y="-31" width="74" height="62" fill="url(#capsule-white)" />
+      <path d="M-62 -20 Q -40 -28 -14 -24" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="5"
+        stroke-linecap="round" />
+    </g>
+    <rect x="-74" y="-31" width="148" height="62" rx="31" fill="none" stroke="#0b3a78" stroke-width="6" />
+    <line x1="0" y1="-31" x2="0" y2="31" stroke="#0b3a78" stroke-width="3" />
+
+    <g transform="translate(-36 1) rotate(32)" fill="#ffffff">
+      <rect x="-13" y="-13" width="12" height="12" rx="1" />
+      <rect x="1" y="-13" width="12" height="12" rx="1" />
+      <rect x="-13" y="1" width="12" height="12" rx="1" />
+      <rect x="1" y="1" width="12" height="12" rx="1" />
+    </g>
+
+    <g transform="translate(37 0) rotate(32)" fill="#0b3a78">
+      <circle r="12" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(45)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(90)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(135)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(180)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(225)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(270)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(315)" />
+      <circle r="5" fill="#eef3fa" />
+    </g>
+  </g>
+  <path d="M58 132 L 128 156 L 128 236 L 58 210 Z" fill="#1e6fd6" />
+  <path d="M198 132 L 128 156 L 128 236 L 198 210 Z" fill="#1358b8" />
+  <path d="M58 132 L 128 156 L 110 176 L 30 150 Z" fill="url(#flap-left)" />
+  <path d="M198 132 L 128 156 L 146 176 L 226 150 Z" fill="url(#flap-right)" />
+  <path d="M128 156 L 110 176 L 128 184 L 146 176 Z" fill="#3f9df0" />
+  <path d="M128 182 L 150 204 L 138 204 L 138 226 L 118 226 L 118 204 L 106 204 Z" fill="#ffffff"
+    stroke="#ffffff" stroke-width="4" stroke-linejoin="round" />
+  <path d="M296.4 192 340.4 64H381.1L425.4 192H390.8L383.3 167.3H337.8L330 192ZM345.6 143.2H375.8L373.5 135.7Q370.3 125 367.2 114.3Q364 103.5 360.9 91.7Q357.6 103.5 354.4 114.3Q351.2 125 347.9 135.7ZM472.3 194.2Q459.8 194.2 450.1 190.5Q440.4 186.7 434.6 179.6Q428.8 172.6 428 163H457.1Q457.8 168 461.6 171Q465.4 173.9 471.9 173.9Q478 173.9 481.4 171.7Q484.9 169.6 484.9 166.1Q484.9 160.5 473.9 158.5L457.5 155.6Q444.1 153.2 437.1 146.4Q430.1 139.6 430.1 128.9Q430.1 115.5 440.9 107.4Q451.7 99.4 470.7 99.4Q489.7 99.4 500.9 107.8Q512.2 116.2 512.6 130.7H485.4Q485.3 126 481.5 122.8Q477.7 119.7 471.7 119.7Q466 119.7 462.7 121.9Q459.5 124.1 459.5 127.5Q459.5 133.1 469.3 135L487.5 138.3Q501.5 140.9 508.2 146.9Q514.9 152.9 514.9 163Q514.9 172.3 509.6 179.4Q504.2 186.4 494.6 190.3Q485 194.2 472.3 194.2ZM525.3 227.9V101.3H554.5V113.1H554.9Q563.1 99.3 581 99.3Q592.6 99.3 601.3 105.3Q610.1 111.3 615 122Q620 132.6 620 146.5Q620 160.8 615.1 171.5Q610.2 182.2 601.4 188.1Q592.6 194 580.8 194Q562.4 194 555.2 178.5H554.8V227.9ZM572.4 170.4Q580.6 170.4 585.3 164Q590.1 157.6 590.1 146.5Q590.1 135.4 585.3 129.1Q580.6 122.8 572.4 122.8Q564.1 122.8 558.9 129.3Q553.6 135.7 553.6 146.5Q553.6 157.4 558.9 163.9Q564.1 170.4 572.4 170.4ZM631 192V101.3H660.5V192ZM675.3 192V101.3H703.9V117.3H704.1Q706.6 108.6 711.9 104.8Q717.2 100.9 726.3 100.9Q728.7 100.9 730.6 101Q732.6 101 734.4 101.1V125.5Q732.8 125.4 729.3 125.3Q725.9 125.3 722.7 125.3Q714.7 125.3 709.8 130.6Q704.8 135.9 704.8 145.5V192ZM742.8 192V101.3H772.3V192ZM816.6 142.7V192H787V101.3H816.3V116Q820.8 108.2 827.9 103.8Q834.9 99.3 845.1 99.3Q859.9 99.3 868.1 108.8Q876.3 118.2 876.3 135V192H846.8V141.1Q846.8 133.1 842.9 128.8Q839 124.6 832 124.6Q825 124.6 820.8 129Q816.6 133.4 816.6 142.7Z" fill="#eef3fb" />
+  <circle cx="645.7" cy="77.5" r="18.2" fill="#eef3fb" />
+  <circle cx="757.5" cy="77.5" r="18.2" fill="#22c995" />
+</svg>

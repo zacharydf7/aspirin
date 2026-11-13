@@ -63,20 +63,23 @@ header.bg-body {
   backdrop-filter: saturate(180%) blur(12px);
 }
 
+/* The header shows the wordmark as a background image, because plain text can't give the name's last i a green dot.
+   The template's logo image is hidden, and its text is shrunk to nothing but stays in the page for screen readers. */
 .navbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  font-weight: 800;
-  font-size: 1.25rem;
-  letter-spacing: -0.02em;
-  color: var(--bs-emphasis-color) !important;
+  width: 125px;
+  height: 36px;
+  background: url("../images/wordmark-dark.svg") left center / contain no-repeat;
+  font-size: 0;
+  color: transparent !important;
+}
+
+[data-bs-theme="dark"] .navbar-brand,
+body[data-layout="landing"] header .navbar-brand {
+  background-image: url("../images/wordmark-light.svg");
 }
 
 .navbar-brand #logo {
-  height: 30px;
-  width: auto;
-  margin: 0;
+  display: none;
 }
 
 .navbar .nav-link {
@@ -202,7 +205,6 @@ body[data-layout="landing"] header.bg-body {
   border-bottom-color: rgba(255, 255, 255, 0.06) !important;
 }
 
-body[data-layout="landing"] header .navbar-brand,
 body[data-layout="landing"] header .nav-link,
 body[data-layout="landing"] header .btn {
   color: #dbe7ff !important;

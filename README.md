@@ -1,6 +1,9 @@
-<img src="assets/logo.svg" alt="" width="96" align="right">
-
-# Aspirin
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/wordmark-light.svg">
+    <img src="assets/wordmark-dark.svg" alt="Aspirin" width="320">
+  </picture>
+</h1>
 
 Aspirin builds an installation package for Windows services from an Aspire AppHost. A build machine creates the
 package, and someone with access to the server installs it. The build machine never needs access to the server,

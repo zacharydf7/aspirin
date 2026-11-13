@@ -130,7 +130,7 @@ public sealed class InstallerTests : IAsyncDisposable
             $"(Get-DirectoryWriters '{parent}') -join '|'; New-ProtectedDirectory '{folder}'; (Get-DirectoryWriters '{folder}') -join '|'");
 
         // Only the owner is left: an elevated session creates folders owned by Administrators, any other by the user.
-        var owner = IsElevated() ? "" : $@"{Environment.UserDomainName}\{Environment.UserName}";
+        var owner = IsElevated() ? "" : CurrentAccount();
         var writers = result.Output.Split(Environment.NewLine);
         Assert.Contains(@"BUILTIN\Users", writers[0]);
         Assert.Equal(owner, writers[1], ignoreCase: true);
@@ -167,10 +167,11 @@ public sealed class InstallerTests : IAsyncDisposable
     public async Task GrantDirectoryRead_ShouldAddReadAccessAndKeepTheOtherPermissions_WhenFolderAlreadyExists()
     {
         var folder = Path.Combine(_workFolder, "service");
-        var account = $@"{Environment.UserDomainName}\{Environment.UserName}";
+        var account = CurrentAccount();
 
-        await RunFunctionsAsync($"New-ProtectedDirectory '{folder}'; Grant-DirectoryRead '{folder}' '{account}'");
+        var result = await RunFunctionsAsync($"New-ProtectedDirectory '{folder}'; Grant-DirectoryRead '{folder}' '{account}'");
 
+        Assert.True(result.ExitCode == 0, result.Output);
         var permissions = (await PublishedPackage.RunAsync("icacls.exe", [folder])).Output;
         Assert.Contains($"{account}:(OI)(CI)(RX)", permissions, StringComparison.OrdinalIgnoreCase);
         Assert.Contains(@"NT AUTHORITY\SYSTEM:(OI)(CI)(F)", permissions);
@@ -345,6 +346,10 @@ public sealed class InstallerTests : IAsyncDisposable
             File.Copy(file, target);
         }
     }
+
+    // The account as Windows names it (DOMAIN\user). Building it from Environment.UserDomainName can give a different
+    // domain, as it does on GitHub's runners.
+    private static string CurrentAccount() => OperatingSystem.IsWindows() ? WindowsIdentity.GetCurrent().Name : "";
 
     [SupportedOSPlatformGuard("windows")]
     private static bool IsElevated() =>

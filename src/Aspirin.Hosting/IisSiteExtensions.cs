@@ -34,6 +34,11 @@ public static partial class IisSiteExtensions
         PackagedProject.ValidatePaths(installPath, options.BackupPath, @"C:\inetpub\Contoso\Web");
         Validate(options, nameof(configure));
 
+        // Aspire turns on forwarded headers for apps behind a proxy, which makes the app trust X-Forwarded-For and
+        // X-Forwarded-Proto from any client. IIS already gives the app the client's real address and scheme. A value
+        // the AppHost sets itself is kept.
+        builder.DisableForwardedHeaders();
+
         return PackagedProject.Annotate(builder, new IisSiteAnnotation(installPath, options));
     }
 

@@ -27,12 +27,23 @@ public class SitePackageTests(PublishedSitePackage package)
     [Fact]
     public void Publish_ShouldLeaveOutTheListeningAddress_WhenProjectHasLaunchSettingsEndpoints()
     {
-        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(package.Root, "package.json")));
-        var settings = manifest.RootElement.GetProperty("resources")[0].GetProperty("settings").EnumerateArray()
-            .Select(setting => setting.GetProperty("name").GetString()).ToList();
+        var settings = SettingNames();
 
         Assert.Contains("Sample__Greeting", settings);
         Assert.DoesNotContain("HTTP_PORTS", settings);
+    }
+
+    [Fact]
+    public void Publish_ShouldLeaveOutForwardedHeaders_WhenGivenSiteAppHost()
+    {
+        Assert.DoesNotContain("ASPNETCORE_FORWARDEDHEADERS_ENABLED", SettingNames());
+    }
+
+    private List<string?> SettingNames()
+    {
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(package.Root, "package.json")));
+        return [.. manifest.RootElement.GetProperty("resources")[0].GetProperty("settings").EnumerateArray()
+            .Select(setting => setting.GetProperty("name").GetString())];
     }
 
     [Fact]

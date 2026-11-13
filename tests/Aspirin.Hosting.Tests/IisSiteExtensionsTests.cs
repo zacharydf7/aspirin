@@ -1,5 +1,7 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Aspirin.Hosting.Tests;
 
@@ -35,6 +37,23 @@ public class IisSiteExtensionsTests
 
         var annotation = Assert.Single(project.Resource.Annotations.OfType<PackagedProjectAnnotation>());
         Assert.IsType<IisSiteAnnotation>(annotation);
+    }
+
+    [Fact]
+    public async Task PublishAsIisSite_ShouldKeepForwardedHeaders_WhenTheAppHostSetsThem()
+    {
+        var builder = DistributedApplication.CreateBuilder(["--operation", "publish"]);
+        var web = builder.AddProject<TestProject>("web")
+            .WithHttpEndpoint()
+            .WithEnvironment("ASPNETCORE_FORWARDEDHEADERS_ENABLED", "true")
+            .PublishAsIisSite(@"C:\inetpub\Web", WithBinding(IisBinding.Http(80)));
+
+        await using var app = builder.Build();
+        var settings = await PackageSettings.ResolveAsync(web.Resource,
+            app.Services.GetRequiredService<DistributedApplicationExecutionContext>(), NullLogger.Instance, includeSecretValues: false,
+            TestContext.Current.CancellationToken);
+
+        Assert.Contains(new PackageSetting("ASPNETCORE_FORWARDEDHEADERS_ENABLED", "true"), settings);
     }
 
     [Fact]

@@ -29,6 +29,10 @@ The package passed its integrity check. Nothing will be changed.
 
 "Would create" becomes "Would update" when the service already exists.
 
+Only administrators can read the IIS configuration, so for an IIS site a `-WhatIf` without elevation says "Would
+create or update" and names the certificate it would look for. Run it elevated to see whether the site exists,
+which bindings would be removed, and which certificate each HTTPS binding would get.
+
 ## Install or update
 
 ```powershell
@@ -52,6 +56,8 @@ The installer stops, with nothing changed, unless all of these hold:
   was changed, added or removed since the package was built fails the check.
 - **Every setting has a value**, from the package or from the settings file.
 - **The session is elevated.**
+- **The server has what the IIS sites need**: IIS 10 or later, the ASP.NET Core Module, the certificates for HTTPS
+  bindings, and no other site on the same addresses. See [IIS sites](iis-sites.md#what-the-server-needs).
 - **Each user account has a password to use.** See [Service accounts](#service-accounts).
 
 The checksums catch a package that was damaged or edited on the way to the server. They are not a signature:
@@ -72,6 +78,7 @@ For each service, in order:
 8. **Removes old backups**, keeping the newest three unless `-KeepBackups` says otherwise.
 
 A service is only changed after its backup is complete, so the install can be [rolled back](rolling-back.md).
+An IIS site goes through similar steps, which [IIS sites](iis-sites.md#what-the-installer-does) lists.
 Folders the installer has to create are locked down first, as [Folder permissions](folder-permissions.md) describes.
 
 ## Service accounts
@@ -90,7 +97,8 @@ Set-ExecutionPolicy -Scope Process Bypass
 .\install.ps1 -Credential (Get-Credential CORP\svc-worker)
 ```
 
-The password is never stored in the package or in a backup.
+The password is never stored in the package or in a service's backup. An IIS application pool works the same way,
+except that IIS keeps the password with the pool, so a site's backup can hold it.
 
 ## When an install fails
 

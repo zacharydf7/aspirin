@@ -5,7 +5,7 @@
   </picture>
 </h1>
 
-Aspirin builds an installation package for Windows services from an Aspire AppHost. A build machine creates the
+Aspirin builds an installation package for Windows services and IIS sites from an Aspire AppHost. A build machine creates the
 package, and someone with access to the server installs it. The build machine never needs access to the server,
 and neither Docker nor the Aspire CLI is involved.
 
@@ -43,7 +43,7 @@ powershell -ExecutionPolicy Bypass -File rollback.ps1          # undo the most r
 
 ## Status
 
-Aspirin is a preview. It isn't on NuGet yet, and it packages Windows services only. Read
+Aspirin is a preview, and it isn't on NuGet yet. Read
 [What isn't handled yet](https://zacharydf7.github.io/aspirin/reference/limitations.html) before relying on it.
 
 ## Tests
@@ -52,11 +52,18 @@ Aspirin is a preview. It isn't on NuGet yet, and it packages Windows services on
 dotnet test
 ```
 
-The tests publish the sample AppHost and run the installer against the package. The tests that install the sample
-service run only in an elevated session on Windows and are skipped otherwise. They install a service named
-`AspirinSampleWorker` under `C:\Program Files` and remove it afterward.
+The tests publish the sample AppHosts and run the installer against the packages. The tests that install something
+run only in an elevated session on Windows and are skipped otherwise:
 
-GitHub Actions runs the tests on Linux and on Windows. The Windows runner is elevated, so that job includes the
-tests that install the service. The Linux job shows that the package builds there.
+- The service tests install a service named `AspirinSampleWorker` under `C:\Program Files`.
+- The site tests also need IIS and the ASP.NET Core Module. They install a site named `Aspirin Sample Web` under
+  `C:\inetpub` on ports 18091 and 18443, with a self-signed certificate for `aspirin-sample.test` in the machine's
+  certificate store.
+
+Both remove what they installed afterward.
+
+GitHub Actions runs the tests on Linux and on Windows. The Windows runner is elevated and has IIS, and the job
+installs the .NET Hosting Bundle, so it includes the tests that install the service and the site. The Linux job
+shows that the packages build there.
 
 The documentation site is in `docs`. Build it with `dotnet tool restore` and then `dotnet docfx docs/docfx.json`.

@@ -315,9 +315,19 @@ function Format-Binding {
 function Find-BindingCertificate {
     param($Binding)
 
-    $store = "Cert:\LocalMachine\$($Binding.certificateStore)"
+    # The store is opened through .NET rather than the Cert: drive, which is missing when Windows PowerShell starts
+    # from PowerShell 7 and can't load its own modules.
+    $store = New-Object Security.Cryptography.X509Certificates.X509Store($Binding.certificateStore, 'LocalMachine')
+    $store.Open('ReadOnly')
+    try {
+        $certificates = @($store.Certificates)
+    }
+    finally {
+        $store.Close()
+    }
+
     $now = Get-Date
-    $valid = @(Get-ChildItem -LiteralPath $store | Where-Object { $_.HasPrivateKey -and $_.NotBefore -le $now -and $_.NotAfter -gt $now })
+    $valid = @($certificates | Where-Object { $_.HasPrivateKey -and $_.NotBefore -le $now -and $_.NotAfter -gt $now })
     if ($Binding.certificateThumbprint) {
         $certificate = $valid | Where-Object { $_.Thumbprint -eq $Binding.certificateThumbprint } | Select-Object -First 1
         $description = "with the thumbprint $($Binding.certificateThumbprint)"

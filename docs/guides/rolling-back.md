@@ -20,7 +20,13 @@ What happens to a service depends on its state before the install:
 | The service didn't exist | The service and its install folder are removed. |
 | The install never reached it | Nothing changes. |
 
-Services are rolled back in the reverse of the order they were installed in.
+An IIS site works the same way. Its backup holds the files, the site and its application pool as IIS had them, and
+the certificate of each HTTPS binding, so all of those come back, including the pool's account. A site or pool the
+install created is removed. If something is still wrong afterward, the install also saved the whole IIS
+configuration, and the rollback prints the `appcmd restore backup` command that brings it back. That restores
+every site on the server to how it was before the install, undoing any other IIS change made since.
+
+Services and sites are rolled back in the reverse of the order they were installed in.
 
 ## "The most recent run" is exact
 

@@ -6,6 +6,8 @@
     href: pipelines.md
   - name: Several services in one package
     href: several-services.md
+  - name: IIS sites
+    href: iis-sites.md
 - name: On the server
   items:
   - name: Installing a package

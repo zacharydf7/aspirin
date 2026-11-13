@@ -247,9 +247,12 @@ public sealed class SiteInstallerTests : IClassFixture<SiteInstallerTests.Certif
         public static Task RemoveAsync() => RunPowerShellAsync(
             $"Get-ChildItem Cert:\\LocalMachine\\My | Where-Object Subject -eq 'CN={HostName}' | Remove-Item");
 
+        // Started from a process that inherits PowerShell 7's module path, Windows PowerShell can't find its own modules,
+        // which provide the Cert: drive and New-SelfSignedCertificate, until they are put back on the path.
         private static async Task RunPowerShellAsync(string command)
         {
-            var result = await PublishedSample.RunAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command]);
+            var result = await PublishedSample.RunAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+                $"$env:PSModulePath = \"$PSHOME\\Modules;$env:PSModulePath\"; Import-Module Microsoft.PowerShell.Security, PKI; {command}"]);
             Assert.True(result.ExitCode == 0, result.Output);
         }
     }

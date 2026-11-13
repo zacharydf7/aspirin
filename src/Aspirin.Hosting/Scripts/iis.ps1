@@ -297,14 +297,18 @@ function Sync-SiteBindings {
         Invoke-AppCmd set site "/site.name:$name" "/+bindings.[protocol='$($binding.Protocol)',bindingInformation='$($binding.Information)',sslFlags='$($binding.SslFlags)']" | Out-Null
     }
 
-    # HTTP.sys keeps the certificate of a removed HTTPS binding until it's removed too, unless another site's binding
-    # still uses it.
+    # Removing an HTTPS binding from IIS leaves its certificate binding in HTTP.sys, so remove that too, unless a binding
+    # of any site, this one included, still uses the endpoint. A certificate binding with another application ID belongs
+    # to a program other than IIS, which may still listen there.
     $removed = @($changes.Remove | Where-Object { $_.Protocol -eq 'https' } | ForEach-Object { Get-ListedBindingEndpoint $_ })
     if ($removed.Count -gt 0) {
         $inUse = @(Get-IisObjects 'site' | ForEach-Object { Get-SiteBindings $_ } | Where-Object { $_.Protocol -eq 'https' } |
             ForEach-Object { (Get-ListedBindingEndpoint $_).Endpoint })
         foreach ($endpoint in $removed | Where-Object { $inUse -notcontains $_.Endpoint }) {
-            Remove-SslCertificateBinding $endpoint
+            $current = Get-SslCertificateBinding $endpoint
+            if ($current -and $current.AppId -eq $script:IisAppId) {
+                Remove-SslCertificateBinding $endpoint
+            }
         }
     }
 }
@@ -507,8 +511,9 @@ function Assert-IisReady {
 #
 # The request goes to the server's own address and names the site's host in the Host header, so it needs no DNS
 # entry. It uses an HTTPS binding when the site has one, because an app that redirects HTTP to HTTPS would answer an
-# HTTP request with a redirect. It accepts the certificate the installer bound and no other: the request never leaves
-# the server, and the name in its URL is an address, which no certificate names.
+# HTTP request with a redirect. It accepts the certificate the installer bound and no other, instead of validating it
+# the usual way: the request never leaves the server, and its URL names an address, which the certificate normally
+# doesn't.
 function Test-SiteHealth {
     param($Definition)
 

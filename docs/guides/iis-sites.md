@@ -75,8 +75,8 @@ IisBinding.Https(443, "web.contoso.local", certificateThumbprint: "8A1F...")
 ```
 
 By subject, the installer picks the newest certificate with that subject that has a private key and is valid at the
-time of the install. When the certificate is renewed, the next install uses the new one, with no new package needed. By thumbprint,
-it uses exactly that certificate.
+time of the install. When the certificate is renewed, the next install uses the new one, with no new package needed.
+By thumbprint, it uses exactly that certificate.
 
 The certificate is looked for in the `My` (Personal) store. Set `CertificateStore = "WebHosting"` with a `with`
 expression to use the Web Hosting store instead.

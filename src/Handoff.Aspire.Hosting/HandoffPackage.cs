@@ -133,7 +133,8 @@ internal static class HandoffPackage
 
         var assemblyPath = Path.Combine(appDirectory, Path.ChangeExtension(executable, ".dll"));
         var version = File.Exists(assemblyPath) ? FileVersionInfo.GetVersionInfo(assemblyPath).ProductVersion : null;
-        var settings = await PackageSettings.ResolveAsync(resource, context.ExecutionContext, context.Logger, context.CancellationToken);
+        var settings = await PackageSettings.ResolveAsync(
+            resource, context.ExecutionContext, context.Logger, options.IncludeSecretValues, context.CancellationToken);
 
         return new PackageResource(resource.Name, source, version,
             new WindowsServiceManifest(options.ServiceName!, options.DisplayName!, options.Description, executable, annotation.InstallPath,

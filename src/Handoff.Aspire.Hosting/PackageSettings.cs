@@ -9,8 +9,10 @@ internal static class PackageSettings
     /// <summary>
     /// Turns the environment variables Aspire would give the resource into package settings.
     /// </summary>
+    /// <param name="includeSecretValues">Whether a secret setting keeps its value. It is marked secret either way.</param>
     public static async Task<IReadOnlyList<PackageSetting>> ResolveAsync(
-        IResource resource, DistributedApplicationExecutionContext executionContext, ILogger logger, CancellationToken cancellationToken)
+        IResource resource, DistributedApplicationExecutionContext executionContext, ILogger logger, bool includeSecretValues,
+        CancellationToken cancellationToken)
     {
         var configuration = await ExecutionConfigurationBuilder.Create(resource)
             .WithEnvironmentVariablesConfig()
@@ -32,13 +34,11 @@ internal static class PackageSettings
             {
                 settings.Add(new(name, Expression: expression));
             }
-            else if (parameters.Any(p => p.Secret))
-            {
-                settings.Add(new(name, Secret: true));
-            }
             else
             {
-                settings.Add(new(name, await provider.GetValueAsync(cancellationToken)));
+                var secret = parameters.Any(p => p.Secret);
+                var value = secret && !includeSecretValues ? null : await provider.GetValueAsync(cancellationToken);
+                settings.Add(new(name, value, secret));
             }
         }
 

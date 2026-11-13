@@ -31,8 +31,8 @@ internal sealed record WindowsServiceManifest(
 
 /// <summary>
 /// An environment variable the service runs with. A setting with no <see cref="Value"/> must be supplied when the
-/// package is installed, either because it is a secret or because it refers to something the package can't know,
-/// such as another service's address.
+/// package is installed, either because it is a secret the package doesn't carry or because it refers to something
+/// the package can't know, such as another service's address.
 /// </summary>
 /// <param name="Expression">For a setting that couldn't be resolved, the Aspire expression it came from.</param>
 internal sealed record PackageSetting(string Name, string? Value = null, bool Secret = false, string? Expression = null);

@@ -30,6 +30,13 @@ public sealed class WindowsServiceOptions
     /// </summary>
     public string? Account { get; set; }
 
+    /// <summary>
+    /// Whether the package carries the values of secret settings, such as connection strings, so the service can be
+    /// installed without supplying them. Off by default. When it is on, anyone who can read the package can read the
+    /// secrets, and publishing fails if a secret has no value.
+    /// </summary>
+    public bool IncludeSecretValues { get; set; }
+
     /// <summary>When Windows starts the service.</summary>
     public WindowsServiceStartMode StartMode { get; set; } = WindowsServiceStartMode.Automatic;
 

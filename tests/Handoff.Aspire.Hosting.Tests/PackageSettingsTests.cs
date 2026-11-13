@@ -8,7 +8,7 @@ namespace Handoff.Aspire.Hosting.Tests;
 public class PackageSettingsTests
 {
     private static async Task<PackageSetting> ResolveAsync(
-        string name, Action<IDistributedApplicationBuilder, IResourceBuilder<ProjectResource>> configure)
+        string name, Action<IDistributedApplicationBuilder, IResourceBuilder<ProjectResource>> configure, bool includeSecretValues = false)
     {
         var builder = DistributedApplication.CreateBuilder(["--operation", "publish"]);
         var worker = builder.AddProject<TestProject>("worker");
@@ -16,9 +16,43 @@ public class PackageSettingsTests
 
         await using var app = builder.Build();
         var settings = await PackageSettings.ResolveAsync(worker.Resource,
-            app.Services.GetRequiredService<DistributedApplicationExecutionContext>(), NullLogger.Instance, TestContext.Current.CancellationToken);
+            app.Services.GetRequiredService<DistributedApplicationExecutionContext>(), NullLogger.Instance, includeSecretValues,
+            TestContext.Current.CancellationToken);
 
         return Assert.Single(settings, setting => setting.Name == name);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldKeepTheValueAndMarkItSecret_WhenGivenSecretParameterAndSecretValuesAreIncluded()
+    {
+        var setting = await ResolveAsync("ApiKey", (builder, worker) =>
+        {
+            builder.Configuration["Parameters:apikey"] = "s3cret";
+            worker.WithEnvironment("ApiKey", builder.AddParameter("apikey", secret: true));
+        }, includeSecretValues: true);
+
+        Assert.Equal(new PackageSetting("ApiKey", "s3cret", Secret: true), setting);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldKeepTheValueAndMarkItSecret_WhenGivenConnectionStringAndSecretValuesAreIncluded()
+    {
+        var setting = await ResolveAsync("ConnectionStrings__db", (builder, worker) =>
+        {
+            builder.Configuration["ConnectionStrings:db"] = "Server=db;Password=s3cret";
+            worker.WithReference(builder.AddConnectionString("db"));
+        }, includeSecretValues: true);
+
+        Assert.Equal(new PackageSetting("ConnectionStrings__db", "Server=db;Password=s3cret", Secret: true), setting);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_ShouldThrow_WhenSecretValuesAreIncludedButTheSecretHasNoValue()
+    {
+        var resolve = () => ResolveAsync("ApiKey",
+            (builder, worker) => worker.WithEnvironment("ApiKey", builder.AddParameter("apikey", secret: true)), includeSecretValues: true);
+
+        await Assert.ThrowsAsync<MissingParameterValueException>(resolve);
     }
 
     [Fact]

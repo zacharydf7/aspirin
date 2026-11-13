@@ -43,9 +43,9 @@ Both settings matter on a build machine:
   On the next build a saved value wins over a new one passed in the environment.
 
 Give parameters their values as environment variables: `Parameters__greeting` for a parameter named `greeting`,
-and `ConnectionStrings__jobs` for a connection string named `jobs`. A secret needs no value at this point: Aspire
-logs that it is missing, and the package is built without it. Add `--environment <name>` to build for an
-environment other than Production.
+and `ConnectionStrings__jobs` for a connection string named `jobs`. Unless the package carries secret values (see
+Settings below), a secret needs no value at this point: Aspire logs that it is missing, and the package is built
+without it. Add `--environment <name>` to build for an environment other than Production.
 
 ## What the package holds
 
@@ -72,7 +72,7 @@ give the project, and writes each one to `package.json` in one of three ways:
 | The value comes from | In the package |
 | --- | --- |
 | Text, or a parameter that isn't secret | The value |
-| A secret parameter or a connection string | The name only, marked `secret` |
+| A secret parameter or a connection string | The name only, marked `secret`. With `IncludeSecretValues`, the value too, still marked `secret` |
 | Something that only exists at run time, such as another project's endpoint | The name and the Aspire expression |
 
 Settings without a value must be supplied when the package is installed, in a JSON file passed to
@@ -81,6 +81,10 @@ Settings without a value must be supplied when the package is installed, in a JS
 ```json
 { "worker": { "ConnectionStrings__jobs": "Server=sql01;Database=Jobs;Integrated Security=true" } }
 ```
+
+For the package to carry secret values too, set `service.IncludeSecretValues = true`. Each secret then needs a value
+when the package is built, and the package must be kept where only the people who may know those secrets can read
+it. Unless a setting only exists at run time, the package can then be installed without a settings file.
 
 ## Install the package
 

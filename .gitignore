@@ -1,0 +1,10 @@
+bin/
+obj/
+.vs/
+*.user
+TestResults/
+aspire-output/
+
+CLAUDE.md
+CLAUDE.local.md
+.claude/

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Aspire's pipeline APIs are experimental: ASPIREPIPELINES001 (steps) and ASPIREPIPELINES004 (output directory). -->
+    <NoWarn>$(NoWarn);ASPIREPIPELINES001;ASPIREPIPELINES004</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting" Version="13.6.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\*" LogicalName="%(Filename)%(Extension)" />
+    <InternalsVisibleTo Include="Handoff.Aspire.Hosting.Tests" />
+  </ItemGroup>
+</Project>

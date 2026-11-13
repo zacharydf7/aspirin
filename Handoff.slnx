@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/Sample.AppHost/Sample.AppHost.csproj" />
+    <Project Path="samples/Sample.Worker/Sample.Worker.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Handoff.Aspire.Hosting/Handoff.Aspire.Hosting.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Handoff.Aspire.Hosting.Tests/Handoff.Aspire.Hosting.Tests.csproj" />
+  </Folder>
+</Solution>

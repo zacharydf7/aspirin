@@ -1,7 +1,7 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 
-namespace Handoff.Aspire.Hosting.Tests;
+namespace Aspirin.Hosting.Tests;
 
 public class WindowsServiceExtensionsTests
 {

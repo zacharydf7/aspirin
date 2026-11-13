@@ -1,6 +1,6 @@
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Pipelines;
-using Handoff.Aspire.Hosting;
+using Aspirin.Hosting;
 
 namespace Aspire.Hosting;
 
@@ -36,7 +36,7 @@ public static class WindowsServiceExtensions
         if (!packageStepExists)
         {
             // Parameters are resolved before publish-prereq, and the package needs their values.
-            builder.ApplicationBuilder.Pipeline.AddStep(HandoffPackage.StepName, HandoffPackage.CreateAsync,
+            builder.ApplicationBuilder.Pipeline.AddStep(AspirinPackage.StepName, AspirinPackage.CreateAsync,
                 dependsOn: WellKnownPipelineSteps.PublishPrereq, requiredBy: WellKnownPipelineSteps.Publish);
         }
 

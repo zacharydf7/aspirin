@@ -1,7 +1,7 @@
 using System.Runtime.Versioning;
 using System.Security.Principal;
 
-namespace Handoff.Aspire.Hosting.Tests;
+namespace Aspirin.Hosting.Tests;
 
 /// <summary>
 /// Runs the package's scripts in Windows PowerShell. The tests that install the service need an elevated session
@@ -9,12 +9,12 @@ namespace Handoff.Aspire.Hosting.Tests;
 /// </summary>
 public sealed class InstallerTests : IAsyncDisposable
 {
-    private const string ServiceName = "HandoffSampleWorker";
-    private const string InstallPath = @"C:\Program Files\HandoffSampleWorker";
+    private const string ServiceName = "AspirinSampleWorker";
+    private const string InstallPath = @"C:\Program Files\AspirinSampleWorker";
     private const string BackupPath = InstallPath + ".backups";
 
     private readonly PublishedPackage _package;
-    private readonly string _workFolder = Directory.CreateTempSubdirectory("handoff-installer-").FullName;
+    private readonly string _workFolder = Directory.CreateTempSubdirectory("aspirin-installer-").FullName;
     private readonly string _settingsFile;
 
     public InstallerTests(PublishedPackage package)

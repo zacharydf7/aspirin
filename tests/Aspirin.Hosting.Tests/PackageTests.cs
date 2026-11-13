@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 
-namespace Handoff.Aspire.Hosting.Tests;
+namespace Aspirin.Hosting.Tests;
 
 public class PackageTests(PublishedPackage package)
 {
@@ -16,9 +16,9 @@ public class PackageTests(PublishedPackage package)
         Assert.Equal("worker", resource.GetProperty("name").GetString());
         // Inside a git repository the SDK appends the commit to the version: 1.2.3+<commit>.
         Assert.Matches(@"^1\.2\.3(\+[0-9a-f]{40})?$", resource.GetProperty("version").GetString());
-        Assert.Equal("HandoffSampleWorker", service.GetProperty("serviceName").GetString());
+        Assert.Equal("AspirinSampleWorker", service.GetProperty("serviceName").GetString());
         Assert.Equal("Sample.Worker.exe", service.GetProperty("executable").GetString());
-        Assert.Equal(@"C:\Program Files\HandoffSampleWorker", service.GetProperty("installPath").GetString());
+        Assert.Equal(@"C:\Program Files\AspirinSampleWorker", service.GetProperty("installPath").GetString());
         Assert.Equal("delayedAutomatic", service.GetProperty("startMode").GetString());
         Assert.True(File.Exists(Path.Combine(package.Root, resource.GetProperty("source").GetString()!, "Sample.Worker.exe")));
     }
@@ -39,14 +39,14 @@ public class PackageTests(PublishedPackage package)
     [Fact]
     public async Task Publish_ShouldExitWithFailureAndNoManifest_WhenParameterHasNoValue()
     {
-        var outputPath = Directory.CreateTempSubdirectory("handoff-failed-publish-").FullName;
+        var outputPath = Directory.CreateTempSubdirectory("aspirin-failed-publish-").FullName;
         try
         {
             var result = await PublishedPackage.PublishSampleAsync(outputPath, new() { ["ConnectionStrings__sampledb"] = "x" });
 
             Assert.NotEqual(0, result.ExitCode);
             Assert.Contains("'Parameters:greeting' is missing", result.Output);
-            Assert.False(File.Exists(Path.Combine(outputPath, "handoff", "package.json")));
+            Assert.False(File.Exists(Path.Combine(outputPath, "aspirin", "package.json")));
         }
         finally
         {

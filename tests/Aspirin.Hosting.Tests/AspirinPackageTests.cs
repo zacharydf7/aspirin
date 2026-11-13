@@ -1,8 +1,8 @@
 using Aspire.Hosting;
 
-namespace Handoff.Aspire.Hosting.Tests;
+namespace Aspirin.Hosting.Tests;
 
-public class HandoffPackageTests
+public class AspirinPackageTests
 {
     private static (string ResourceName, WindowsServiceAnnotation Service) Service(string name, string installPath, string backupPath) =>
         (name, new WindowsServiceAnnotation(installPath, new WindowsServiceOptions { ServiceName = name, BackupPath = backupPath }));
@@ -10,7 +10,7 @@ public class HandoffPackageTests
     [Fact]
     public void EnsureServicesAreSeparate_ShouldNotThrow_WhenEachServiceHasItsOwnNameAndFolders()
     {
-        var exception = Record.Exception(() => HandoffPackage.EnsureServicesAreSeparate(
+        var exception = Record.Exception(() => AspirinPackage.EnsureServicesAreSeparate(
             [Service("first", @"C:\Services\First", @"C:\Backups\First"), Service("second", @"C:\Services\Second", @"C:\Backups\Second")]));
 
         Assert.Null(exception);
@@ -22,7 +22,7 @@ public class HandoffPackageTests
         var first = Service("Worker", @"C:\Services\First", @"C:\Backups\First");
         var second = Service("worker", @"C:\Services\Second", @"C:\Backups\Second");
 
-        var exception = Assert.Throws<DistributedApplicationException>(() => HandoffPackage.EnsureServicesAreSeparate([first, second]));
+        var exception = Assert.Throws<DistributedApplicationException>(() => AspirinPackage.EnsureServicesAreSeparate([first, second]));
 
         Assert.Contains("both use the service name 'Worker'", exception.Message);
     }
@@ -37,6 +37,6 @@ public class HandoffPackageTests
         var first = Service("first", @"C:\Services\First", @"C:\Backups\First");
         var second = Service("second", secondInstallPath, secondBackupPath);
 
-        Assert.Throws<DistributedApplicationException>(() => HandoffPackage.EnsureServicesAreSeparate([first, second]));
+        Assert.Throws<DistributedApplicationException>(() => AspirinPackage.EnsureServicesAreSeparate([first, second]));
     }
 }

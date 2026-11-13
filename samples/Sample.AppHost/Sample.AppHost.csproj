@@ -8,6 +8,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Sample.Worker\Sample.Worker.csproj" />
-    <ProjectReference Include="..\..\src\Handoff.Aspire.Hosting\Handoff.Aspire.Hosting.csproj" IsAspireProjectResource="false" />
+    <ProjectReference Include="..\..\src\Aspirin.Hosting\Aspirin.Hosting.csproj" IsAspireProjectResource="false" />
   </ItemGroup>
 </Project>

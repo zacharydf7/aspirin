@@ -11,6 +11,6 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Scripts\*" LogicalName="%(Filename)%(Extension)" />
-    <InternalsVisibleTo Include="Handoff.Aspire.Hosting.Tests" />
+    <InternalsVisibleTo Include="Aspirin.Hosting.Tests" />
   </ItemGroup>
 </Project>

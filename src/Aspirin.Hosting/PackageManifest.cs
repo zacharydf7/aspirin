@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Handoff.Aspire.Hosting;
+namespace Aspirin.Hosting;
 
 /// <summary>
 /// The contents of <c>package.json</c>, which the install and rollback scripts read. Every property is always

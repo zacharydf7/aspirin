@@ -5,14 +5,14 @@ using Aspire.Hosting.Pipelines;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace Handoff.Aspire.Hosting;
+namespace Aspirin.Hosting;
 
 /// <summary>
 /// The pipeline step that writes the installation package.
 /// </summary>
-internal static class HandoffPackage
+internal static class AspirinPackage
 {
-    public const string StepName = "handoff-package";
+    public const string StepName = "aspirin-package";
 
     private static readonly string[] s_packageFiles = ["install.ps1", "rollback.ps1", "common.ps1", "README.txt"];
 
@@ -41,7 +41,7 @@ internal static class HandoffPackage
         EnsureServicesAreSeparate([.. services.Select(service => (service.resource.Name, service.annotation))]);
 
         // The package owns this folder, so it can be emptied without touching what other publishers wrote.
-        var packageRoot = Path.Combine(context.Services.GetRequiredService<IPipelineOutputService>().GetOutputDirectory(), "handoff");
+        var packageRoot = Path.Combine(context.Services.GetRequiredService<IPipelineOutputService>().GetOutputDirectory(), "aspirin");
         if (Directory.Exists(packageRoot))
         {
             Directory.Delete(packageRoot, recursive: true);
@@ -63,7 +63,7 @@ internal static class HandoffPackage
 
         foreach (var fileName in s_packageFiles)
         {
-            await using var source = typeof(HandoffPackage).Assembly.GetManifestResourceStream(fileName)!;
+            await using var source = typeof(AspirinPackage).Assembly.GetManifestResourceStream(fileName)!;
             await using var destination = File.Create(Path.Combine(packageRoot, fileName));
             await source.CopyToAsync(destination, cancellationToken);
         }

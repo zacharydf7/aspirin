@@ -1,11 +1,11 @@
-namespace Handoff.Aspire.Hosting.Tests;
+namespace Aspirin.Hosting.Tests;
 
 public class PackageChecksumsTests
 {
     [Fact]
     public async Task WriteAsync_ShouldListEveryOtherFileInOrder_WhenCalled()
     {
-        var root = Directory.CreateTempSubdirectory("handoff-checksums-").FullName;
+        var root = Directory.CreateTempSubdirectory("aspirin-checksums-").FullName;
         try
         {
             Directory.CreateDirectory(Path.Combine(root, "resources", "worker"));

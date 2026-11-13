@@ -1,4 +1,4 @@
-namespace Handoff.Aspire.Hosting;
+namespace Aspirin.Hosting;
 
 /// <summary>
 /// Checks Windows paths as text. The package can be built on Linux, where System.IO.Path follows other rules.

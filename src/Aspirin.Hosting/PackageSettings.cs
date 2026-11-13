@@ -2,7 +2,7 @@ using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.Logging;
 
-namespace Handoff.Aspire.Hosting;
+namespace Aspirin.Hosting;
 
 internal static class PackageSettings
 {

@@ -1,4 +1,4 @@
-namespace Handoff.Aspire.Hosting;
+namespace Aspirin.Hosting;
 
 /// <summary>
 /// Describes how a project is installed as a Windows service on the target machine.

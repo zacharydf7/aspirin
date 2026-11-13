@@ -1,9 +1,9 @@
 using System.Diagnostics;
-using Handoff.Aspire.Hosting.Tests;
+using Aspirin.Hosting.Tests;
 
 [assembly: AssemblyFixture(typeof(PublishedPackage))]
 
-namespace Handoff.Aspire.Hosting.Tests;
+namespace Aspirin.Hosting.Tests;
 
 /// <summary>
 /// Publishes the sample AppHost once, the way a CI step would, and shares the package with every test.
@@ -13,9 +13,9 @@ public sealed class PublishedPackage : IAsyncLifetime
     public const string Greeting = "Hello from the tests";
     public const string ConnectionString = "Server=db;Password=not-in-the-package";
 
-    private readonly string _outputPath = Directory.CreateTempSubdirectory("handoff-package-").FullName;
+    private readonly string _outputPath = Directory.CreateTempSubdirectory("aspirin-package-").FullName;
 
-    public string Root => Path.Combine(_outputPath, "handoff");
+    public string Root => Path.Combine(_outputPath, "aspirin");
 
     public async ValueTask InitializeAsync()
     {
@@ -68,9 +68,9 @@ public sealed class PublishedPackage : IAsyncLifetime
     private static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (!File.Exists(Path.Combine(directory.FullName, "Handoff.slnx")))
+        while (!File.Exists(Path.Combine(directory.FullName, "Aspirin.slnx")))
         {
-            directory = directory.Parent ?? throw new InvalidOperationException("Handoff.slnx was not found above the test output folder.");
+            directory = directory.Parent ?? throw new InvalidOperationException("Aspirin.slnx was not found above the test output folder.");
         }
 
         return directory.FullName;

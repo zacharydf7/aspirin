@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Handoff.Aspire.Hosting;
+namespace Aspirin.Hosting;
 
 internal static class PackageChecksums
 {

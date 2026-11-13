@@ -1,4 +1,4 @@
-using Handoff.Aspire.Hosting;
+using Aspirin.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -8,11 +8,11 @@ var database = builder.AddConnectionString("sampledb");
 builder.AddProject<Projects.Sample_Worker>("worker")
     .WithEnvironment("Sample__Greeting", greeting)
     .WithReference(database)
-    .PublishAsWindowsService(@"C:\Program Files\HandoffSampleWorker", service =>
+    .PublishAsWindowsService(@"C:\Program Files\AspirinSampleWorker", service =>
     {
-        service.ServiceName = "HandoffSampleWorker";
-        service.DisplayName = "Handoff Sample Worker";
-        service.Description = "Sample worker installed from a Handoff package.";
+        service.ServiceName = "AspirinSampleWorker";
+        service.DisplayName = "Aspirin Sample Worker";
+        service.Description = "Sample worker installed from an Aspirin package.";
         service.StartMode = WindowsServiceStartMode.DelayedAutomatic;
     });
 

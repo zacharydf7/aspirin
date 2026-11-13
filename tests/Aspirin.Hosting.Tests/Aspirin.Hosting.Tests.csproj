@@ -10,6 +10,6 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
-    <ProjectReference Include="..\..\src\Handoff.Aspire.Hosting\Handoff.Aspire.Hosting.csproj" />
+    <ProjectReference Include="..\..\src\Aspirin.Hosting\Aspirin.Hosting.csproj" />
   </ItemGroup>
 </Project>

@@ -4,9 +4,9 @@
     <Project Path="samples/Sample.Worker/Sample.Worker.csproj" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/Handoff.Aspire.Hosting/Handoff.Aspire.Hosting.csproj" />
+    <Project Path="src/Aspirin.Hosting/Aspirin.Hosting.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Handoff.Aspire.Hosting.Tests/Handoff.Aspire.Hosting.Tests.csproj" />
+    <Project Path="tests/Aspirin.Hosting.Tests/Aspirin.Hosting.Tests.csproj" />
   </Folder>
 </Solution>

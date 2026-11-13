@@ -1,6 +1,6 @@
 using Aspire.Hosting.ApplicationModel;
 
-namespace Handoff.Aspire.Hosting;
+namespace Aspirin.Hosting;
 
 /// <summary>
 /// Marks a project to be packaged as a Windows service when the application is published.

@@ -1,0 +1,15 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
+
+  <!-- The animated example on the documentation's landing page shows parts of AppHost.cs. Building it here keeps
+       that example compiling. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sample.Worker\Sample.Worker.csproj" AspireProjectMetadataTypeName="Worker" />
+    <ProjectReference Include="..\Sample.Reports\Sample.Reports.csproj" AspireProjectMetadataTypeName="Reports" />
+    <ProjectReference Include="..\..\src\Aspirin.Hosting\Aspirin.Hosting.csproj" IsAspireProjectResource="false" />
+  </ItemGroup>
+</Project>

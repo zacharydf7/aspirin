@@ -28,6 +28,91 @@ services, and another rolls them back.</p>
 </div>
 </section>
 
+<section class="ap-section ap-showcase-section">
+<div class="ap-wrap">
+<div class="ap-section-head">
+<span class="ap-kicker">See it</span>
+<h2>Build up an AppHost</h2>
+<p>Switch on a feature to see the lines it adds to the AppHost and what it changes in the package.</p>
+</div>
+<div class="ap-showcase">
+<div class="ap-chips" role="group" aria-label="Features">
+<button type="button" class="ap-chip" data-feature="settings" aria-pressed="true"
+  data-note="Settings come from the environment Aspire gives the worker. The greeting's value goes into the package. The connection string is a secret, so by default the package carries only its name, and its value is supplied at install time.">
+<i class="bi bi-sliders" aria-hidden="true"></i><span>Settings</span><i class="bi bi-check-circle-fill ap-chip-check" aria-hidden="true"></i></button>
+<button type="button" class="ap-chip" data-feature="account" aria-pressed="true"
+  data-note="The service runs as a domain account and starts after the automatic services. The installer asks for the account's password when the service is created or its account changes. The password is never stored in the package.">
+<i class="bi bi-person-badge" aria-hidden="true"></i><span>Service account</span><i class="bi bi-check-circle-fill ap-chip-check" aria-hidden="true"></i></button>
+<button type="button" class="ap-chip" data-feature="secrets" aria-pressed="true"
+  data-note="The package carries the values of secret settings too, so the installer needs no settings file for them. Keep a package like this where only the people allowed to know those secrets can read it.">
+<i class="bi bi-key" aria-hidden="true"></i><span>Secrets in the package</span><i class="bi bi-check-circle-fill ap-chip-check" aria-hidden="true"></i></button>
+<button type="button" class="ap-chip" data-feature="second" aria-pressed="true"
+  data-note="Both services go into one package and are installed in the order the AppHost declares them. A rollback undoes both.">
+<i class="bi bi-boxes" aria-hidden="true"></i><span>A second service</span><i class="bi bi-check-circle-fill ap-chip-check" aria-hidden="true"></i></button>
+</div>
+<div class="ap-code">
+<div class="ap-code-bar"><i></i><i></i><i></i><span>AppHost.cs</span></div>
+<div class="ap-window-code">
+<div class="ap-seg">
+
+[!code-csharp[](../samples/Showcase.AppHost/AppHost.cs#base-start)]
+
+</div>
+<div class="ap-seg" data-feature="settings" data-gap>
+
+[!code-csharp[](../samples/Showcase.AppHost/AppHost.cs#settings-declare)]
+
+</div>
+<div class="ap-seg" data-gap>
+
+[!code-csharp[](../samples/Showcase.AppHost/AppHost.cs#base-worker)]
+
+</div>
+<div class="ap-seg" data-feature="settings" data-indent="4">
+
+[!code-csharp[](../samples/Showcase.AppHost/AppHost.cs#settings-use)]
+
+</div>
+<div class="ap-seg" data-indent="4">
+
+[!code-csharp[](../samples/Showcase.AppHost/AppHost.cs#base-service)]
+
+</div>
+<div class="ap-seg" data-feature="account" data-indent="8">
+
+[!code-csharp[](../samples/Showcase.AppHost/AppHost.cs#account)]
+
+</div>
+<div class="ap-seg" data-feature="secrets" data-indent="8">
+
+[!code-csharp[](../samples/Showcase.AppHost/AppHost.cs#secrets)]
+
+</div>
+<div class="ap-seg" data-indent="4">
+
+[!code-csharp[](../samples/Showcase.AppHost/AppHost.cs#base-end)]
+
+</div>
+<div class="ap-seg" data-feature="second" data-gap>
+
+[!code-csharp[](../samples/Showcase.AppHost/AppHost.cs#second)]
+
+</div>
+<div class="ap-seg" data-gap>
+
+[!code-csharp[](../samples/Showcase.AppHost/AppHost.cs#base-run)]
+
+</div>
+</div>
+</div>
+<p class="ap-showcase-note" aria-live="polite"
+  data-default="A worker, packaged as a Windows service. Switch on a feature to add to it.">A worker, packaged as a
+Windows service, with every feature switched on.</p>
+<label class="ap-typing"><input type="checkbox" checked> Typing animation</label>
+</div>
+</div>
+</section>
+
 <section class="ap-section">
 <div class="ap-wrap">
 <div class="ap-section-head">

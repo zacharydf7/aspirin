@@ -575,6 +575,142 @@ body[data-layout="landing"] header form.search input {
   margin-bottom: 0;
 }
 
+/* "Build up an AppHost" on the landing page */
+
+.ap-showcase-section {
+  padding-bottom: 2rem;
+}
+
+.ap-showcase {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.ap-chips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
+.ap-chip {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 1rem 0.75rem;
+  border: 1px solid var(--bs-border-color);
+  border-radius: 12px;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-weight: 600;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
+}
+
+.ap-chip i {
+  font-size: 1.35rem;
+}
+
+.ap-chip:hover {
+  border-color: rgba(22, 131, 255, 0.45);
+}
+
+.ap-chip[aria-pressed="true"] {
+  border-color: rgba(22, 131, 255, 0.55);
+  background: rgba(22, 131, 255, 0.1);
+  color: var(--bs-link-color);
+}
+
+/* The check mark shows a chip is on without relying on color. */
+.ap-chip .ap-chip-check {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  display: none;
+  font-size: 0.95rem;
+}
+
+.ap-chip[aria-pressed="true"] .ap-chip-check {
+  display: block;
+}
+
+.ap-chip:focus-visible {
+  outline: 2px solid var(--bs-link-color);
+  outline-offset: 2px;
+}
+
+/* The pieces scroll sideways together, as one file would. */
+.ap-window-code {
+  padding: 1.1rem 0;
+  min-height: 22rem;
+  overflow-x: auto;
+}
+
+.ap-showcase .code-action {
+  display: none;
+}
+
+/* DocFX removes the indentation a piece shares, so each piece puts it back with data-indent. */
+.ap-seg {
+  --ap-indent: 0;
+}
+
+.ap-seg[data-indent="4"] {
+  --ap-indent: 4;
+}
+
+.ap-seg[data-indent="8"] {
+  --ap-indent: 8;
+}
+
+.ap-seg[data-gap] {
+  margin-top: calc(0.86rem * 1.65);
+}
+
+.ap-showcase .ap-seg pre {
+  overflow: visible;
+  margin: 0;
+  padding: 0;
+  font-size: 0.86rem;
+  line-height: 1.65;
+}
+
+.ap-showcase .ap-seg pre > code {
+  overflow: visible;
+  padding: 0 1.4rem 0 calc(1.4rem + var(--ap-indent) * 1ch) !important;
+  white-space: pre;
+}
+
+.ap-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.15em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--ap-accent);
+  animation: ap-blink 1s steps(1) infinite;
+}
+
+@keyframes ap-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.ap-showcase-note {
+  min-height: 3.2em;
+  margin: 1rem 0 0.75rem;
+  color: var(--bs-secondary-color);
+}
+
+.ap-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
 body[data-layout="landing"] footer {
   margin-top: 0 !important;
 }
@@ -586,5 +722,9 @@ body[data-layout="landing"] footer {
 
   .ap-card-featured {
     grid-column: auto;
+  }
+
+  .ap-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

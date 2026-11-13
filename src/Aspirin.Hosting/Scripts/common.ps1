@@ -179,6 +179,67 @@ function New-ProtectedDirectory {
     }
 }
 
+# Says where an account's password is checked: its domain for DOMAIN\name, this computer's domain for a UPN
+# (name@suffix), and this machine for a local account (.\name, <computer>\name or a bare name). A UPN goes to this
+# computer's domain because its suffix needn't be a domain name, and the domain finds the account across the forest.
+# ContextName is $null for this computer's domain.
+function Get-AccountContext {
+    param([string]$Account)
+
+    if ($Account.Contains('@')) {
+        return [pscustomobject]@{ ContextType = 'Domain'; ContextName = $null; UserName = $Account }
+    }
+
+    if ($Account.Contains('\')) {
+        $domain, $userName = $Account.Split('\', 2)
+        if ($domain -ne '.' -and $domain -ne $env:COMPUTERNAME) {
+            return [pscustomobject]@{ ContextType = 'Domain'; ContextName = $domain; UserName = $userName }
+        }
+        $Account = $userName
+    }
+
+    return [pscustomobject]@{ ContextType = 'Machine'; ContextName = $env:COMPUTERNAME; UserName = $Account }
+}
+
+# Fails unless the credential's password is right, checked where Get-AccountContext says. Logon rights aren't
+# checked, only the password.
+function Assert-AccountPassword {
+    param([pscredential]$Credential)
+
+    Add-Type -AssemblyName System.DirectoryServices.AccountManagement
+    $account = $Credential.UserName
+    $target = Get-AccountContext $account
+
+    try {
+        if ($null -eq $target.ContextName) {
+            $context = New-Object System.DirectoryServices.AccountManagement.PrincipalContext($target.ContextType)
+        }
+        else {
+            $context = New-Object System.DirectoryServices.AccountManagement.PrincipalContext($target.ContextType, $target.ContextName)
+        }
+        try {
+            # Without options, a domain check can try a second kind of bind after the first fails, so one wrong
+            # password could count twice toward locking the account out.
+            $valid = $context.ValidateCredentials($target.UserName, $Credential.GetNetworkCredential().Password,
+                [System.DirectoryServices.AccountManagement.ContextOptions]::Negotiate)
+        }
+        finally {
+            $context.Dispose()
+        }
+    }
+    catch {
+        $reason = $_.Exception.Message
+        if ($_.Exception.InnerException) {
+            $reason = $_.Exception.InnerException.Message
+        }
+        throw "The password for '$account' couldn't be checked: $reason"
+    }
+
+    if (-not $valid) {
+        throw "The password for '$account' is wrong, or the account doesn't exist, is locked out or is disabled."
+    }
+}
+
 # Lets the account read and run what is in the folder, on top of the permissions the folder already has.
 function Grant-DirectoryRead {
     param([string]$Path, [string]$Account)

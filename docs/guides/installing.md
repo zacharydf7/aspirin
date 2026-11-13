@@ -58,7 +58,7 @@ The installer stops, with nothing changed, unless all of these hold:
 - **The session is elevated.**
 - **The server has what the IIS sites need**: IIS 10 or later, the ASP.NET Core Module, the certificates for HTTPS
   bindings, and no other site on the same addresses. See [IIS sites](iis-sites.md#what-the-server-needs).
-- **Each user account has a password to use.** See [Service accounts](#service-accounts).
+- **Each user account has a password to use, and it's right.** See [Service accounts](#service-accounts).
 
 The checksums catch a package that was damaged or edited on the way to the server. They are not a signature:
 someone who can rewrite the package can rewrite the checksums too.
@@ -88,6 +88,13 @@ A service runs as LocalSystem unless the package names another account.
 Built-in accounts such as `NT AUTHORITY\NetworkService` and virtual accounts need no password. Group managed
 service accounts are treated the same way, but that has not been tried. For a user account, the installer needs the
 password when the service is created or its account changes, and it opens a credential prompt to ask for it.
+
+Before it changes anything, the installer checks each password it was given: against the domain for an account such
+as `CORP\svc-worker` or `svc-worker@corp.local`, and against the server itself for a local account such as
+`.\svc-worker`. An account written as `name@suffix` is looked up through the server's own domain, which finds it
+anywhere in the forest. The install stops with nothing changed if the password is wrong, or if the account doesn't
+exist, is locked out or is disabled. If the domain can't be reached, the check can't be made, and the install stops
+too.
 
 To supply the password yourself, pass a credential. A credential can't cross from one PowerShell process to
 another, so run the script in the session that holds it. The installer then sets the password on every run:

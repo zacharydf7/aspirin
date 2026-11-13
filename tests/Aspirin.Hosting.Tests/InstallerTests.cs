@@ -180,6 +180,71 @@ public sealed class InstallerTests : IAsyncDisposable
         Assert.True(permissions.Contains(@"NT AUTHORITY\SYSTEM:(OI)(CI)(F)", StringComparison.Ordinal), permissions);
     }
 
+    [Theory]
+    [InlineData(@"CORP\svc-worker", @"Domain|CORP|svc-worker")]
+    [InlineData("svc-worker@company.com", "Domain||svc-worker@company.com")]
+    [InlineData(@".\svc-worker", "Machine|<computer>|svc-worker")]
+    [InlineData(@"<computer>\svc-worker", "Machine|<computer>|svc-worker")]
+    [InlineData("svc-worker", "Machine|<computer>|svc-worker")]
+    public async Task GetAccountContext_ShouldPickWhereThePasswordIsChecked_WhenGivenEachAccountForm(string account, string expected)
+    {
+        var computer = Environment.MachineName;
+
+        var result = await RunFunctionsAsync(
+            $"$c = Get-AccountContext '{account.Replace("<computer>", computer)}'; \"$($c.ContextType)|$($c.ContextName)|$($c.UserName)\"");
+
+        Assert.Equal(expected.Replace("<computer>", computer), result.Output.Trim(), ignoreCase: true);
+    }
+
+    [Fact]
+    public async Task AssertAccountPassword_ShouldThrow_WhenTheLocalAccountDoesNotExist()
+    {
+        var result = await RunFunctionsAsync(CheckPasswordCommand(@".\aspirin-no-such-account", TestPassword));
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains(@"The password for '.\aspirin-no-such-account' is wrong", result.Output);
+    }
+
+    [Theory]
+    [InlineData(".")]
+    [InlineData("computer")]
+    public async Task AssertAccountPassword_ShouldPass_WhenGivenTheRightPasswordOfALocalAccount(string prefix)
+    {
+        Assert.SkipUnless(PackageScripts.IsElevated(), "Creating a local account needs an elevated session.");
+        try
+        {
+            await CreateTestAccountAsync();
+            var account = (prefix == "." ? "." : Environment.MachineName) + @"\" + TestAccount;
+
+            var result = await RunFunctionsAsync(CheckPasswordCommand(account, TestPassword));
+
+            Assert.True(result.ExitCode == 0, result.Output);
+        }
+        finally
+        {
+            await PublishedPackage.RunAsync("net.exe", ["user", TestAccount, "/delete"]);
+        }
+    }
+
+    [Fact]
+    public async Task AssertAccountPassword_ShouldThrow_WhenGivenAWrongPassword()
+    {
+        Assert.SkipUnless(PackageScripts.IsElevated(), "Creating a local account needs an elevated session.");
+        try
+        {
+            await CreateTestAccountAsync();
+
+            var result = await RunFunctionsAsync(CheckPasswordCommand($@".\{TestAccount}", "Not-the-password-1"));
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains($@"The password for '.\{TestAccount}' is wrong", result.Output);
+        }
+        finally
+        {
+            await PublishedPackage.RunAsync("net.exe", ["user", TestAccount, "/delete"]);
+        }
+    }
+
     [Fact]
     public async Task Install_ShouldUpdateTheSameService_WhenRunTwice()
     {
@@ -317,6 +382,19 @@ public sealed class InstallerTests : IAsyncDisposable
     }
 
     private Task<(int ExitCode, string Output)> RunFunctionsAsync(string command) => PackageScripts.RunFunctionsAsync(_package.Root, command);
+
+    private const string TestAccount = "aspirin-test";
+    // Windows Server rejects a password that contains the account name.
+    private const string TestPassword = "Xq7-Check-Pw-2041";
+
+    private static string CheckPasswordCommand(string account, string password) =>
+        $"Assert-AccountPassword (New-Object PSCredential('{account}', (ConvertTo-SecureString '{password}' -AsPlainText -Force)))";
+
+    private static async Task CreateTestAccountAsync()
+    {
+        var created = await PublishedPackage.RunAsync("net.exe", ["user", TestAccount, TestPassword, "/add"]);
+        Assert.True(created.ExitCode == 0, created.Output);
+    }
 
     private static async Task RemoveServiceAsync()
     {

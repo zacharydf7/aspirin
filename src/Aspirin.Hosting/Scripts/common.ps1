@@ -240,6 +240,91 @@ function Assert-AccountPassword {
     }
 }
 
+# Fails unless Windows lets the account log on the way a service (Service) or an application pool (Batch) does.
+# Trying the logon checks the right as Windows will when the service or pool starts: granted to the account or one of
+# its groups, and not taken away by a policy that denies it. The attempt shows in the Security event log as a logon.
+function Assert-AccountLogon {
+    param([pscredential]$Credential, [ValidateSet('Service', 'Batch')][string]$LogonType)
+
+    if (-not ('Aspirin.Logon' -as [type])) {
+        Add-Type -Namespace Aspirin -Name Logon -MemberDefinition @'
+[DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+private static extern bool LogonUser(string user, string domain, string password, int logonType, int provider, out IntPtr token);
+
+[DllImport("kernel32.dll")]
+private static extern bool CloseHandle(IntPtr handle);
+
+// Returns 0 when the logon works, or the Windows error code.
+public static int Try(string user, string domain, string password, int logonType)
+{
+    IntPtr token;
+    if (LogonUser(user, domain, password, logonType, 0, out token))
+    {
+        CloseHandle(token);
+        return 0;
+    }
+    return Marshal.GetLastWin32Error();
+}
+'@
+    }
+
+    $account = $Credential.UserName
+    $target = Get-AccountContext $account
+    $domain = $target.ContextName
+    if ($target.ContextType -eq 'Machine') {
+        $domain = '.'
+    }
+
+    $logonTypes = @{ Batch = 4; Service = 5 }
+    $rights = @{ Batch = 'Log on as a batch job'; Service = 'Log on as a service' }
+    $logonTypeNotGranted = 1385  # ERROR_LOGON_TYPE_NOT_GRANTED
+    $code = [Aspirin.Logon]::Try($target.UserName, $domain, $Credential.GetNetworkCredential().Password, $logonTypes[$LogonType])
+    if ($code -eq $logonTypeNotGranted) {
+        throw "The account '$account' lacks the '$($rights[$LogonType])' right, or a policy denies it. Ask an administrator to grant it, then run the installer again."
+    }
+    if ($code -ne 0) {
+        throw "Windows wouldn't let '$account' log on to check its '$($rights[$LogonType])' right: $((New-Object ComponentModel.Win32Exception($code)).Message)"
+    }
+}
+
+# Returns the SIDs that hold a user right, such as SeBatchLogonRight, under security policy, both local and from the
+# domain.
+function Get-UserRightHolders {
+    param([string]$Right)
+
+    $path = [IO.Path]::GetTempFileName()
+    try {
+        # /mergedpolicy includes rights that domain Group Policy sets, not only local ones.
+        & secedit.exe /export /mergedpolicy /areas USER_RIGHTS /cfg $path /quiet | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Reading the user rights from security policy failed (secedit exit code $LASTEXITCODE)."
+        }
+        $line = Get-Content -LiteralPath $path -Encoding Unicode | Where-Object { $_ -match "^$Right\s*=" } | Select-Object -First 1
+        if (-not $line) {
+            return @()
+        }
+
+        # A holder is written as *SID, or as a name when secedit couldn't write its SID.
+        return @(($line -split '=', 2)[1].Split(',') | ForEach-Object {
+            $holder = $_.Trim()
+            if ($holder.StartsWith('*')) {
+                $holder.Substring(1)
+            }
+            else {
+                try {
+                    ([Security.Principal.NTAccount]$holder).Translate([Security.Principal.SecurityIdentifier]).Value
+                }
+                catch {
+                    $holder
+                }
+            }
+        })
+    }
+    finally {
+        Remove-Item -LiteralPath $path -ErrorAction SilentlyContinue
+    }
+}
+
 # Lets the account read and run what is in the folder, on top of the permissions the folder already has.
 function Grant-DirectoryRead {
     param([string]$Path, [string]$Account)

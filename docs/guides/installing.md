@@ -58,7 +58,8 @@ The installer stops, with nothing changed, unless all of these hold:
 - **The session is elevated.**
 - **The server has what the IIS sites need**: IIS 10 or later, the ASP.NET Core Module, the certificates for HTTPS
   bindings, and no other site on the same addresses. See [IIS sites](iis-sites.md#what-the-server-needs).
-- **Each user account has a password to use, and it's right.** See [Service accounts](#service-accounts).
+- **Each user account has a password to use, it's right, and the account may log on the way it will run.** See
+  [Service accounts](#service-accounts).
 
 The checksums catch a package that was damaged or edited on the way to the server. They are not a signature:
 someone who can rewrite the package can rewrite the checksums too.
@@ -95,6 +96,15 @@ as `CORP\svc-worker` or `svc-worker@corp.local`, and against the server itself f
 anywhere in the forest. The install stops with nothing changed if the password is wrong, or if the account doesn't
 exist, is locked out or is disabled. If the domain can't be reached, the check can't be made, and the install stops
 too.
+
+It then checks that the account may log on the way it will run: as a service, with the "Log on as a service" right,
+or as an IIS application pool, with "Log on as a batch job". It does this by logging the account on, the same way
+Windows will when the service or pool starts, so the check takes in the account's groups and any policy that denies
+the right. Each check shows in the Security event log as a logon.
+For a pool, the account isn't checked on its own when the `IIS_IUSRS` group has the right, because IIS adds that
+group to every pool's identity. The installer doesn't grant a missing right, because Group Policy usually manages
+these rights and would undo it. Instead, it stops with nothing changed, and its message asks you to have an
+administrator grant the right.
 
 To supply the password yourself, pass a credential. A credential can't cross from one PowerShell process to
 another, so run the script in the session that holds it. The installer then sets the password on every run:

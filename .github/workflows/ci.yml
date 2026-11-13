@@ -20,6 +20,20 @@ jobs:
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: 10.0.x
-      # The tests publish the sample package themselves. On Windows the runner is elevated, so they also install the
-      # sample service; on Linux those tests are skipped.
+      # GitHub's Windows image has IIS, and the IIS site tests also need the ASP.NET Core Module, which the .NET
+      # Hosting Bundle installs.
+      - if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          if (-not (Test-Path "$env:ProgramFiles\IIS\Asp.Net Core Module\V2\aspnetcorev2.dll")) {
+            $release = (Invoke-RestMethod https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json).releases[0]
+            $file = $release.'aspnetcore-runtime'.files | Where-Object name -eq 'dotnet-hosting-win.exe'
+            $installer = Join-Path $env:RUNNER_TEMP 'dotnet-hosting.exe'
+            Invoke-WebRequest $file.url -OutFile $installer -UseBasicParsing
+            if ((Get-FileHash $installer -Algorithm SHA512).Hash -ne $file.hash) { throw 'The Hosting Bundle download does not match its published hash.' }
+            $process = Start-Process $installer -ArgumentList '/install', '/quiet', '/norestart' -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw "The Hosting Bundle installer failed with exit code $($process.ExitCode)." }
+          }
+      # The tests publish the sample packages themselves. On Windows the runner is elevated, so they also install the
+      # sample service and site; on Linux those tests are skipped.
       - run: dotnet test

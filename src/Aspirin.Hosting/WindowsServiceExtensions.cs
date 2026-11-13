@@ -1,5 +1,4 @@
 using Aspire.Hosting.ApplicationModel;
-using Aspire.Hosting.Pipelines;
 using Aspirin.Hosting;
 
 namespace Aspire.Hosting;
@@ -27,46 +26,14 @@ public static class WindowsServiceExtensions
         configure?.Invoke(options);
         options.ServiceName ??= builder.Resource.Name;
         options.DisplayName ??= options.ServiceName;
-        options.BackupPath = (options.BackupPath ?? installPath + ".backups").TrimEnd('\\');
-        Validate(installPath, options.BackupPath, options.ServiceName);
+        options.BackupPath = PackagedProject.BackupPathFor(installPath, options);
+        PackagedProject.ValidatePaths(installPath, options.BackupPath, @"C:\Services\Worker");
 
-        var packageStepExists = builder.ApplicationBuilder.Resources.Any(r => r.HasAnnotationOfType<WindowsServiceAnnotation>());
-        builder.WithAnnotation(new WindowsServiceAnnotation(installPath, options), ResourceAnnotationMutationBehavior.Replace);
-
-        if (!packageStepExists)
+        if (string.IsNullOrWhiteSpace(options.ServiceName) || options.ServiceName.Length > 256 || options.ServiceName.AsSpan().ContainsAny('/', '\\'))
         {
-            // Parameters are resolved before publish-prereq, and the package needs their values.
-            builder.ApplicationBuilder.Pipeline.AddStep(AspirinPackage.StepName, AspirinPackage.CreateAsync,
-                dependsOn: WellKnownPipelineSteps.PublishPrereq, requiredBy: WellKnownPipelineSteps.Publish);
+            throw new ArgumentException($"The service name '{options.ServiceName}' must be 1 to 256 characters with no slashes.", nameof(configure));
         }
 
-        return builder;
-    }
-
-    private static void Validate(string installPath, string backupPath, string serviceName)
-    {
-        if (!WindowsPath.IsAbsolute(installPath))
-        {
-            throw new ArgumentException(
-                $"The install path '{installPath}' must be an absolute Windows path, such as C:\\Services\\Worker.", nameof(installPath));
-        }
-
-        if (!WindowsPath.IsAbsolute(backupPath))
-        {
-            throw new ArgumentException($"The backup path '{backupPath}' must be an absolute Windows path.", nameof(backupPath));
-        }
-
-        // The installer mirrors the install folder into the backup folder.
-        if (WindowsPath.Overlap(installPath, backupPath))
-        {
-            throw new ArgumentException(
-                $"The backup path '{backupPath}' and the install path '{installPath}' must be separate folders, with neither inside the other.",
-                nameof(backupPath));
-        }
-
-        if (string.IsNullOrWhiteSpace(serviceName) || serviceName.Length > 256 || serviceName.AsSpan().ContainsAny('/', '\\'))
-        {
-            throw new ArgumentException($"The service name '{serviceName}' must be 1 to 256 characters with no slashes.", nameof(serviceName));
-        }
+        return PackagedProject.Annotate(builder, new WindowsServiceAnnotation(installPath, options));
     }
 }

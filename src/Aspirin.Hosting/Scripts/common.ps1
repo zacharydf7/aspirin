@@ -22,8 +22,8 @@ function Read-PackageManifest {
     }
 
     $manifest = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ($manifest.schemaVersion -ne 1) {
-        throw "This script supports package schema version 1, but the package is version '$($manifest.schemaVersion)'."
+    if ($manifest.schemaVersion -ne 2) {
+        throw "This script supports package schema version 2, but the package is version '$($manifest.schemaVersion)'."
     }
 
     return $manifest
@@ -151,11 +151,17 @@ function Set-ServiceEnvironment {
     }
 }
 
-# Makes Destination an exact copy of Source. robocopy retries files that are still locked by a stopping service.
+# Makes Destination an exact copy of Source, apart from the files named in Exclude, which are neither copied nor
+# removed. robocopy retries files that are still locked by a stopping service.
 function Copy-DirectoryMirror {
-    param([string]$Source, [string]$Destination)
+    param([string]$Source, [string]$Destination, [string[]]$Exclude = @())
 
-    & robocopy.exe $Source.TrimEnd('\') $Destination.TrimEnd('\') /MIR /R:5 /W:3 /NFL /NDL /NJH /NJS /NP | Out-Null
+    $excludeArguments = @()
+    if ($Exclude.Count -gt 0) {
+        $excludeArguments = @('/XF') + $Exclude
+    }
+
+    & robocopy.exe $Source.TrimEnd('\') $Destination.TrimEnd('\') /MIR /R:5 /W:3 /NFL /NDL /NJH /NJS /NP @excludeArguments | Out-Null
     if ($LASTEXITCODE -ge 8) {
         throw "Copying '$Source' to '$Destination' failed (robocopy exit code $LASTEXITCODE)."
     }
@@ -255,7 +261,7 @@ function Get-UnprotectedFolders {
 
 # Backup folders are named after the install run that made them, a UTC timestamp, so sorting by name sorts by age.
 # Only a folder with backup.json is complete.
-function Get-ServiceBackups {
+function Get-Backups {
     param([string]$BackupPath)
 
     if (-not (Test-Path -LiteralPath $BackupPath)) {
@@ -267,12 +273,12 @@ function Get-ServiceBackups {
         Sort-Object Name -Descending)
 }
 
-# Returns the id of the most recent install run that backed up any service in the package, or nothing.
+# Returns the id of the most recent install run that backed up any resource in the package, or nothing.
 function Get-LastRunId {
     param($Manifest)
 
     $newest = $Manifest.resources |
-        ForEach-Object { @(Get-ServiceBackups $_.windowsService.backupPath)[0] } |
+        ForEach-Object { @(Get-Backups $_.backupPath)[0] } |
         Where-Object { $_ } |
         Sort-Object Name -Descending |
         Select-Object -First 1

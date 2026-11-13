@@ -1,7 +1,9 @@
 <Solution>
   <Folder Name="/samples/">
     <Project Path="samples/Sample.AppHost/Sample.AppHost.csproj" />
+    <Project Path="samples/Sample.IisAppHost/Sample.IisAppHost.csproj" />
     <Project Path="samples/Sample.Reports/Sample.Reports.csproj" />
+    <Project Path="samples/Sample.Web/Sample.Web.csproj" />
     <Project Path="samples/Sample.Worker/Sample.Worker.csproj" />
     <Project Path="samples/Showcase.AppHost/Showcase.AppHost.csproj" />
   </Folder>

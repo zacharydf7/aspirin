@@ -2,25 +2,22 @@ using System.Diagnostics;
 using Aspirin.Hosting.Tests;
 
 [assembly: AssemblyFixture(typeof(PublishedPackage))]
+[assembly: AssemblyFixture(typeof(PublishedSitePackage))]
 
 namespace Aspirin.Hosting.Tests;
 
 /// <summary>
-/// Publishes the sample AppHost once, the way a CI step would, and shares the package with every test.
+/// Publishes a sample AppHost once, the way a CI step would, and shares the package with every test.
 /// </summary>
-public sealed class PublishedPackage : IAsyncLifetime
+public abstract class PublishedSample(string appHost, Dictionary<string, string> parameters) : IAsyncLifetime
 {
-    public const string Greeting = "Hello from the tests";
-    public const string ConnectionString = "Server=db;Password=not-in-the-package";
-
     private readonly string _outputPath = Directory.CreateTempSubdirectory("aspirin-package-").FullName;
 
     public string Root => Path.Combine(_outputPath, "aspirin");
 
     public async ValueTask InitializeAsync()
     {
-        var result = await PublishSampleAsync(_outputPath,
-            new() { ["Parameters__greeting"] = Greeting, ["ConnectionStrings__sampledb"] = ConnectionString });
+        var result = await PublishSampleAsync(_outputPath, parameters, appHost);
 
         Assert.True(result.ExitCode == 0, result.Output);
     }
@@ -31,7 +28,8 @@ public sealed class PublishedPackage : IAsyncLifetime
         return ValueTask.CompletedTask;
     }
 
-    public static Task<(int ExitCode, string Output)> PublishSampleAsync(string outputPath, Dictionary<string, string> parameters)
+    public static Task<(int ExitCode, string Output)> PublishSampleAsync(
+        string outputPath, Dictionary<string, string> parameters, string appHost = "Sample.AppHost")
     {
         // Without this, a parameter with no value makes the AppHost wait for someone to type one.
         parameters["ASPIRE_INTERACTIVITY_ENABLED"] = "false";
@@ -39,7 +37,7 @@ public sealed class PublishedPackage : IAsyncLifetime
         // "--clear-cache true" stops Aspire from saving parameter values under the user profile and from preferring
         // values saved by an earlier run over the ones given here.
         return RunAsync("dotnet",
-            ["run", "--project", Path.Combine(FindRepositoryRoot(), "samples", "Sample.AppHost"), "--",
+            ["run", "--project", Path.Combine(FindRepositoryRoot(), "samples", appHost), "--",
                 "--operation", "publish", "--step", "publish", "--output-path", outputPath, "--clear-cache", "true"],
             parameters);
     }
@@ -75,4 +73,18 @@ public sealed class PublishedPackage : IAsyncLifetime
 
         return directory.FullName;
     }
+}
+
+/// <summary>The package of Sample.AppHost, which has one Windows service.</summary>
+public sealed class PublishedPackage() : PublishedSample("Sample.AppHost",
+    new() { ["Parameters__greeting"] = Greeting, ["ConnectionStrings__sampledb"] = ConnectionString })
+{
+    public const string Greeting = "Hello from the tests";
+    public const string ConnectionString = "Server=db;Password=not-in-the-package";
+}
+
+/// <summary>The package of Sample.IisAppHost, which has one IIS site.</summary>
+public sealed class PublishedSitePackage() : PublishedSample("Sample.IisAppHost", new() { ["Parameters__greeting"] = Greeting })
+{
+    public const string Greeting = "Hello from the site";
 }

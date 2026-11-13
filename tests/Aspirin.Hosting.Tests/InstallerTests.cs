@@ -1,4 +1,3 @@
-using System.Runtime.Versioning;
 using System.Security.Principal;
 
 namespace Aspirin.Hosting.Tests;
@@ -36,7 +35,7 @@ public sealed class InstallerTests : IAsyncDisposable
     [Fact]
     public async Task Install_ShouldListThePlanWithoutSecretValues_WhenGivenWhatIf()
     {
-        var result = await RunScriptAsync(_package.Root, "install.ps1", "-WhatIf", "-SettingsFile", _settingsFile);
+        var result = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-WhatIf", "-SettingsFile", _settingsFile);
 
         Assert.True(result.ExitCode == 0, result.Output);
         Assert.Matches($@"Would create the Windows service '{ServiceName}' \(version 1\.2\.3(\+[0-9a-f]{{40}})?\)", result.Output);
@@ -47,7 +46,7 @@ public sealed class InstallerTests : IAsyncDisposable
     [Fact]
     public async Task Install_ShouldFailBeforeChangingAnything_WhenSecretSettingHasNoValue()
     {
-        var result = await RunScriptAsync(_package.Root, "install.ps1", "-WhatIf");
+        var result = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-WhatIf");
 
         Assert.Equal(1, result.ExitCode);
         Assert.Contains("worker: ConnectionStrings__sampledb", result.Output);
@@ -59,7 +58,7 @@ public sealed class InstallerTests : IAsyncDisposable
     {
         File.WriteAllText(_settingsFile, """{ "wroker": { "ConnectionStrings__sampledb": "x" } }""");
 
-        var result = await RunScriptAsync(_package.Root, "install.ps1", "-WhatIf", "-SettingsFile", _settingsFile);
+        var result = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-WhatIf", "-SettingsFile", _settingsFile);
 
         Assert.Equal(1, result.ExitCode);
         Assert.Contains("names the resource 'wroker'", result.Output);
@@ -87,7 +86,7 @@ public sealed class InstallerTests : IAsyncDisposable
                 break;
         }
 
-        var result = await RunScriptAsync(copy, "install.ps1", "-WhatIf", "-SettingsFile", _settingsFile);
+        var result = await PackageScripts.RunScriptAsync(copy, "install.ps1", "-WhatIf", "-SettingsFile", _settingsFile);
 
         Assert.Equal(1, result.ExitCode);
         Assert.Contains(expectedProblem, result.Output);
@@ -109,8 +108,8 @@ public sealed class InstallerTests : IAsyncDisposable
         var manifest = Path.Combine(_workFolder, "manifest.json");
         File.WriteAllText(manifest, $$"""
             { "resources": [
-                { "windowsService": { "backupPath": "{{firstBackups.Replace(@"\", @"\\")}}" } },
-                { "windowsService": { "backupPath": "{{secondBackups.Replace(@"\", @"\\")}}" } } ] }
+                { "backupPath": "{{firstBackups.Replace(@"\", @"\\")}}" },
+                { "backupPath": "{{secondBackups.Replace(@"\", @"\\")}}" } ] }
             """);
 
         var result = await RunFunctionsAsync($"Get-LastRunId (Get-Content -LiteralPath '{manifest}' -Raw | ConvertFrom-Json)");
@@ -130,7 +129,7 @@ public sealed class InstallerTests : IAsyncDisposable
             $"(Get-DirectoryWriters '{parent}') -join '|'; New-ProtectedDirectory '{folder}'; (Get-DirectoryWriters '{folder}') -join '|'");
 
         // Only the owner is left: an elevated session creates folders owned by Administrators, any other by the user.
-        var owner = IsElevated() ? "" : CurrentAccount();
+        var owner = PackageScripts.IsElevated() ? "" : CurrentAccount();
         var writers = result.Output.Split(Environment.NewLine);
         Assert.Contains(@"BUILTIN\Users", writers[0]);
         Assert.Equal(owner, writers[1], ignoreCase: true);
@@ -184,12 +183,12 @@ public sealed class InstallerTests : IAsyncDisposable
     [Fact]
     public async Task Install_ShouldUpdateTheSameService_WhenRunTwice()
     {
-        Assert.SkipUnless(IsElevated(), "Installing a Windows service needs an elevated session.");
+        Assert.SkipUnless(PackageScripts.IsElevated(), "Installing a Windows service needs an elevated session.");
         try
         {
-            var first = await RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
+            var first = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
             Assert.True(first.ExitCode == 0, first.Output);
-            var second = await RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
+            var second = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
             Assert.True(second.ExitCode == 0, second.Output);
 
             Assert.Contains("Creating the service", first.Output);
@@ -215,18 +214,18 @@ public sealed class InstallerTests : IAsyncDisposable
     [Fact]
     public async Task Rollback_ShouldRestoreTheWorkingService_WhenAnUpdateFailsToStart()
     {
-        Assert.SkipUnless(IsElevated(), "Installing a Windows service needs an elevated session.");
+        Assert.SkipUnless(PackageScripts.IsElevated(), "Installing a Windows service needs an elevated session.");
         try
         {
-            var working = await RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
+            var working = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
             Assert.True(working.ExitCode == 0, working.Output);
 
             File.WriteAllText(_settingsFile, """{ "worker": { "ConnectionStrings__sampledb": "x", "Sample__FailOnStart": "true" } }""");
-            var failing = await RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
+            var failing = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
             Assert.Equal(1, failing.ExitCode);
             Assert.Contains("Run rollback.ps1 to undo it", failing.Output);
 
-            var rollback = await RunScriptAsync(_package.Root, "rollback.ps1");
+            var rollback = await PackageScripts.RunScriptAsync(_package.Root, "rollback.ps1");
 
             Assert.True(rollback.ExitCode == 0, rollback.Output);
             Assert.Contains("RUNNING", (await PublishedPackage.RunAsync("sc.exe", ["query", ServiceName])).Output);
@@ -243,13 +242,13 @@ public sealed class InstallerTests : IAsyncDisposable
     [Fact]
     public async Task Rollback_ShouldRemoveTheService_WhenItDidNotExistBeforeTheInstall()
     {
-        Assert.SkipUnless(IsElevated(), "Installing a Windows service needs an elevated session.");
+        Assert.SkipUnless(PackageScripts.IsElevated(), "Installing a Windows service needs an elevated session.");
         try
         {
-            var install = await RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
+            var install = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
             Assert.True(install.ExitCode == 0, install.Output);
 
-            var rollback = await RunScriptAsync(_package.Root, "rollback.ps1");
+            var rollback = await PackageScripts.RunScriptAsync(_package.Root, "rollback.ps1");
 
             Assert.True(rollback.ExitCode == 0, rollback.Output);
             Assert.NotEqual(0, (await PublishedPackage.RunAsync("sc.exe", ["query", ServiceName])).ExitCode);
@@ -264,20 +263,20 @@ public sealed class InstallerTests : IAsyncDisposable
     [Fact]
     public async Task Rollback_ShouldStopUntilForced_WhenUsersCanChangeTheBackup()
     {
-        Assert.SkipUnless(IsElevated(), "Installing a Windows service needs an elevated session.");
+        Assert.SkipUnless(PackageScripts.IsElevated(), "Installing a Windows service needs an elevated session.");
         try
         {
-            var install = await RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
+            var install = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
             Assert.True(install.ExitCode == 0, install.Output);
             await PublishedPackage.RunAsync("icacls.exe", [BackupPath, "/grant", "*S-1-5-32-545:(OI)(CI)M"]);
 
-            var refused = await RunScriptAsync(_package.Root, "rollback.ps1");
+            var refused = await PackageScripts.RunScriptAsync(_package.Root, "rollback.ps1");
 
             Assert.Equal(1, refused.ExitCode);
             Assert.Contains($"{BackupPath} (", refused.Output);
             Assert.Contains("RUNNING", (await PublishedPackage.RunAsync("sc.exe", ["query", ServiceName])).Output);
 
-            var forced = await RunScriptAsync(_package.Root, "rollback.ps1", "-Force");
+            var forced = await PackageScripts.RunScriptAsync(_package.Root, "rollback.ps1", "-Force");
 
             Assert.True(forced.ExitCode == 0, forced.Output);
             Assert.NotEqual(0, (await PublishedPackage.RunAsync("sc.exe", ["query", ServiceName])).ExitCode);
@@ -291,21 +290,21 @@ public sealed class InstallerTests : IAsyncDisposable
     [Fact]
     public async Task Rollback_ShouldRestoreThePreviousFiles_WhenTheServiceWasUpdated()
     {
-        Assert.SkipUnless(IsElevated(), "Installing a Windows service needs an elevated session.");
+        Assert.SkipUnless(PackageScripts.IsElevated(), "Installing a Windows service needs an elevated session.");
         try
         {
-            var first = await RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
+            var first = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
             Assert.True(first.ExitCode == 0, first.Output);
 
             // Stands in for a file that only the earlier version had: the second install removes it.
             var marker = Path.Combine(InstallPath, "from-the-earlier-version.txt");
             await PublishedPackage.RunAsync("sc.exe", ["stop", ServiceName]);
             File.WriteAllText(marker, "");
-            var second = await RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
+            var second = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-SettingsFile", _settingsFile);
             Assert.True(second.ExitCode == 0, second.Output);
             Assert.False(File.Exists(marker));
 
-            var rollback = await RunScriptAsync(_package.Root, "rollback.ps1");
+            var rollback = await PackageScripts.RunScriptAsync(_package.Root, "rollback.ps1");
 
             Assert.True(rollback.ExitCode == 0, rollback.Output);
             Assert.True(File.Exists(marker));
@@ -317,14 +316,7 @@ public sealed class InstallerTests : IAsyncDisposable
         }
     }
 
-    private static Task<(int ExitCode, string Output)> RunScriptAsync(string packageRoot, string script, params string[] arguments) =>
-        PublishedPackage.RunAsync("powershell.exe",
-            ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", Path.Combine(packageRoot, script), .. arguments]);
-
-    // Runs a command with the functions the scripts share, without running either script.
-    private Task<(int ExitCode, string Output)> RunFunctionsAsync(string command) =>
-        PublishedPackage.RunAsync("powershell.exe",
-            ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", $". '{Path.Combine(_package.Root, "common.ps1")}'; {command}"]);
+    private Task<(int ExitCode, string Output)> RunFunctionsAsync(string command) => PackageScripts.RunFunctionsAsync(_package.Root, command);
 
     private static async Task RemoveServiceAsync()
     {
@@ -355,7 +347,4 @@ public sealed class InstallerTests : IAsyncDisposable
     // domain, as it does on GitHub's runners.
     private static string CurrentAccount() => OperatingSystem.IsWindows() ? WindowsIdentity.GetCurrent().Name : "";
 
-    [SupportedOSPlatformGuard("windows")]
-    private static bool IsElevated() =>
-        OperatingSystem.IsWindows() && new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
 }

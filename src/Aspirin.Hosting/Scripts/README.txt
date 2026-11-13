@@ -1,12 +1,15 @@
 Installation package
 ====================
 
-package.json lists the Windows services in this package and how each one is installed.
+package.json lists the Windows services and IIS sites in this package and how each one is installed.
 The scripts are plain PowerShell and can be read before they are run.
 
 To see what would be done, without changing anything:
 
     powershell -ExecutionPolicy Bypass -File install.ps1 -WhatIf
+
+    Run it as an administrator to also compare the sites with what IIS has now and to see which
+    certificates they would use.
 
 To install or update:
 
@@ -22,16 +25,19 @@ To install or update:
 
         { "<resource name>": { "<setting name>": "<value>" } }
 
-    If a service runs as a user account, the installer asks for the password when the service
-    is created or its account changes.
+    If a service or application pool runs as a user account, the installer asks for the password
+    when it is created or its account changes.
+
+    IIS sites need IIS 10 or later and the ASP.NET Core Module, which the .NET Hosting Bundle
+    installs. Certificates for HTTPS must already be in the server's certificate store.
 
 To roll back (when the installer tells you to, or when whoever sent the package asks you to):
 
     powershell -ExecutionPolicy Bypass -File rollback.ps1
 
-    This undoes the most recent install. Each service the install changed is restored from
-    the backup taken just before the change, and a service the install created is removed.
-    The service account is not restored. If the install changed it, set it back in the
+    This undoes the most recent install. Each service and site the install changed is restored
+    from the backup taken just before the change, and one the install created is removed.
+    A service's account is not restored. If the install changed it, set it back in the
     Services console.
 
 The installer verifies every file against checksums.sha256 before it changes anything, so

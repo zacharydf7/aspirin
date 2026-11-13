@@ -142,7 +142,7 @@ function Restore-IisSite {
     }
 
     foreach ($entry in @($record.certificateBindings)) {
-        $endpoint = [pscustomobject]@{ Kind = $entry.kind; Endpoint = $entry.endpoint; RegistryKey = $entry.registryKey }
+        $endpoint = [pscustomobject]@{ Kind = $entry.kind; Endpoint = $entry.endpoint }
         if ($entry.existed) {
             Set-SslCertificateBinding $endpoint $entry.certificateHash $entry.store $entry.appId
         }

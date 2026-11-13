@@ -352,7 +352,7 @@ function Get-SslEndpoint {
     param($Binding)
 
     if ($Binding.sni) {
-        return [pscustomobject]@{ Kind = 'hostnameport'; Endpoint = "$($Binding.hostName):$($Binding.port)"; RegistryKey = 'SslSniBindingInfo' }
+        return [pscustomobject]@{ Kind = 'hostnameport'; Endpoint = "$($Binding.hostName):$($Binding.port)" }
     }
 
     $address = $Binding.ipAddress
@@ -362,24 +362,28 @@ function Get-SslEndpoint {
     elseif ($address.Contains(':')) {
         $address = "[$address]"
     }
-    return [pscustomobject]@{ Kind = 'ipport'; Endpoint = "${address}:$($Binding.port)"; RegistryKey = 'SslBindingInfo' }
+    return [pscustomobject]@{ Kind = 'ipport'; Endpoint = "${address}:$($Binding.port)" }
 }
 
-# Returns the certificate HTTP.sys has for the endpoint, or nothing. It's read from the registry because netsh.exe
-# translates its output into the server's language.
+# Returns the certificate HTTP.sys has for the endpoint, or nothing. netsh.exe translates its labels into the
+# server's language, so the values are found by their form and order: the hash is the only 40 hexadecimal digits,
+# the application ID the only GUID, and the store name comes right after it.
 function Get-SslCertificateBinding {
     param($Endpoint)
 
-    $path = "HKLM:\SYSTEM\CurrentControlSet\Services\HTTP\Parameters\$($Endpoint.RegistryKey)\$($Endpoint.Endpoint)"
-    $values = Get-ItemProperty -LiteralPath $path -ErrorAction SilentlyContinue
-    if (-not $values) {
+    $output = @(& netsh.exe http show sslcert "$($Endpoint.Kind)=$($Endpoint.Endpoint)")
+    if ($LASTEXITCODE -ne 0) {
         return $null
     }
-    return [pscustomobject]@{
-        CertificateHash = [BitConverter]::ToString($values.SslCertHash).Replace('-', '')
-        AppId = ([guid][byte[]]$values.AppId).ToString('B')
-        Store = $values.SslCertStoreName
+
+    $values = @($output | Where-Object { $_ -match '\s:\s' } | ForEach-Object { ($_ -split '\s:\s', 2)[1].Trim() })
+    $hash = $values | Where-Object { $_ -match '^[0-9A-Fa-f]{40}$' } | Select-Object -First 1
+    $appIdIndex = [array]::FindIndex([string[]]$values, [Predicate[string]] { param($value) $value -match '^\{[0-9A-Fa-f-]{36}\}$' })
+    if (-not $hash -or $appIdIndex -lt 0 -or $appIdIndex + 1 -ge $values.Count) {
+        throw "netsh.exe showed the certificate of $($Endpoint.Endpoint) in a form the installer doesn't recognize:`n$($output -join "`n")"
     }
+
+    return [pscustomobject]@{ CertificateHash = $hash.ToUpperInvariant(); AppId = $values[$appIdIndex]; Store = $values[$appIdIndex + 1] }
 }
 
 function Remove-SslCertificateBinding {

@@ -354,7 +354,7 @@ function New-SiteBackup {
     foreach ($binding in @($definition.bindings | Where-Object { $_.protocol -eq 'https' })) {
         $endpoint = Get-SslEndpoint $binding
         $current = Get-SslCertificateBinding $endpoint
-        $entry = [ordered]@{ kind = $endpoint.Kind; endpoint = $endpoint.Endpoint; registryKey = $endpoint.RegistryKey; existed = [bool]$current }
+        $entry = [ordered]@{ kind = $endpoint.Kind; endpoint = $endpoint.Endpoint; existed = [bool]$current }
         if ($current) {
             $entry.certificateHash = $current.CertificateHash
             $entry.appId = $current.AppId

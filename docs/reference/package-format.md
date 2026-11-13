@@ -181,7 +181,7 @@ site and pool as `appcmd list ... /config /xml` describes them, which `appcmd ad
   "poolExisted": true,
   "siteWasStarted": true,
   "certificateBindings": [
-    { "kind": "hostnameport", "endpoint": "aspirin-sample.test:18443", "registryKey": "SslSniBindingInfo",
+    { "kind": "hostnameport", "endpoint": "aspirin-sample.test:18443",
       "existed": true, "certificateHash": "3B1F...", "appId": "{4dc3e181-e14b-4a21-b022-59fc669b0914}", "store": "MY" }
   ]
 }

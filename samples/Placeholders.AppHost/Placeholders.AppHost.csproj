@@ -1,0 +1,12 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sample.Worker\Sample.Worker.csproj" AspireProjectMetadataTypeName="Worker" />
+    <ProjectReference Include="..\..\src\Aspirin.Hosting\Aspirin.Hosting.csproj" IsAspireProjectResource="false" />
+  </ItemGroup>
+</Project>

@@ -12,13 +12,15 @@ public class PackageTests(PublishedPackage package)
         var resource = Assert.Single(manifest.RootElement.GetProperty("resources").EnumerateArray());
         var service = resource.GetProperty("windowsService");
 
-        Assert.Equal(1, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
+        Assert.Equal(2, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("worker", resource.GetProperty("name").GetString());
+        Assert.Equal("windowsService", resource.GetProperty("kind").GetString());
+        Assert.Equal(JsonValueKind.Null, resource.GetProperty("iisSite").ValueKind);
         // Inside a git repository the SDK appends the commit to the version: 1.2.3+<commit>.
         Assert.Matches(@"^1\.2\.3(\+[0-9a-f]{40})?$", resource.GetProperty("version").GetString());
         Assert.Equal("AspirinSampleWorker", service.GetProperty("serviceName").GetString());
         Assert.Equal("Sample.Worker.exe", service.GetProperty("executable").GetString());
-        Assert.Equal(@"C:\Program Files\AspirinSampleWorker", service.GetProperty("installPath").GetString());
+        Assert.Equal(@"C:\Program Files\AspirinSampleWorker", resource.GetProperty("installPath").GetString());
         Assert.Equal("delayedAutomatic", service.GetProperty("startMode").GetString());
         Assert.True(File.Exists(Path.Combine(package.Root, resource.GetProperty("source").GetString()!, "Sample.Worker.exe")));
     }

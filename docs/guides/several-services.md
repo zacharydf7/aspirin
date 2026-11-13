@@ -26,7 +26,7 @@ inside another's. The installer mirrors each install folder and prunes each back
 overwrite each other. Publishing fails with a message that names the two resources:
 
 ```text
-The resources 'intake' and 'billing' use the folders 'C:\Program Files\Contoso' and 'C:\Program Files\Contoso\Billing'. Each service needs install and backup folders of its own, with none inside another.
+The resources 'intake' and 'billing' use the folders 'C:\Program Files\Contoso' and 'C:\Program Files\Contoso\Billing'. Each resource needs install and backup folders of its own, with none inside another.
 ```
 
 Sibling folders under a shared parent, as in the example at the top, are fine.

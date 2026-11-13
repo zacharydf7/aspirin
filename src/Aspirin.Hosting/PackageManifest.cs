@@ -10,7 +10,7 @@ namespace Aspirin.Hosting;
 /// </summary>
 internal sealed record PackageManifest(int SchemaVersion, string Application, string Environment, IReadOnlyList<PackageResource> Resources)
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     private static readonly JsonSerializerOptions s_jsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -24,17 +24,32 @@ internal sealed record PackageManifest(int SchemaVersion, string Application, st
     public string ToJson() => JsonSerializer.Serialize(this, s_jsonOptions);
 }
 
+/// <param name="Kind">Which of <see cref="WindowsService"/> and <see cref="IisSite"/> describes the resource. The other is null.</param>
 /// <param name="Source">The folder that holds the published files, relative to the package root.</param>
 /// <param name="Version">The product version of the published assembly, when it has one.</param>
 internal sealed record PackageResource(
-    string Name, string Source, string? Version, WindowsServiceManifest WindowsService, IReadOnlyList<PackageSetting> Settings);
+    string Name, PackageResourceKind Kind, string Source, string? Version, string InstallPath, string BackupPath,
+    WindowsServiceManifest? WindowsService, IisSiteManifest? IisSite, IReadOnlyList<PackageSetting> Settings);
+
+internal enum PackageResourceKind
+{
+    WindowsService,
+    IisSite,
+}
 
 internal sealed record WindowsServiceManifest(
-    string ServiceName, string DisplayName, string? Description, string Executable, string InstallPath, string BackupPath,
-    WindowsServiceStartMode StartMode, string? Account);
+    string ServiceName, string DisplayName, string? Description, string Executable, WindowsServiceStartMode StartMode, string? Account);
+
+internal sealed record IisSiteManifest(
+    string SiteName, string AppPoolName, string? Account, bool AlwaysRunning, string? HealthCheckPath, IReadOnlyList<IisBindingManifest> Bindings);
+
+/// <param name="Sni">Whether the certificate is chosen by host name, which an HTTPS binding with a host name does.</param>
+internal sealed record IisBindingManifest(
+    IisBindingProtocol Protocol, string IpAddress, int Port, string? HostName, string? CertificateSubject, string? CertificateThumbprint,
+    string? CertificateStore, bool Sni);
 
 /// <summary>
-/// An environment variable the service runs with. A setting with no <see cref="Value"/> must be supplied when the
+/// An environment variable the project runs with. A setting with no <see cref="Value"/> must be supplied when the
 /// package is installed, either because it is a secret the package doesn't carry or because it refers to something
 /// the package can't know, such as another service's address.
 /// </summary>

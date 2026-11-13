@@ -1,13 +1,14 @@
 # What isn't handled yet
 
-Aspirin is a preview. It packages and installs Windows services, and these are the gaps to know about before you
-rely on it. The ones that are planned work are tracked on [GitHub](https://github.com/zacharydf7/aspirin/issues).
+Aspirin is a preview. It packages and installs Windows services and IIS sites, and these are the gaps to know
+about before you rely on it. The ones that are planned work are tracked on
+[GitHub](https://github.com/zacharydf7/aspirin/issues).
 
 ## Not built
 
-- **IIS sites.** Only Windows services can be packaged. A web project that runs under IIS needs its site and
-  application pool set up some other way.
-- **Uninstalling.** There is no script that removes a service. A rollback removes a service only when the last
+- **Applications under an existing IIS site.** A project is packaged as a whole site with its own pool. It can't be
+  added as an application or virtual directory under a site the package doesn't own.
+- **Uninstalling.** There is no script that removes a service or site. A rollback removes one only when the last
   install created it.
 - **A single archive.** The package is a folder. Zip it yourself if you need one file to move.
 - **NuGet.** The library has to be referenced from source.
@@ -22,10 +23,21 @@ rely on it. The ones that are planned work are tracked on [GitHub](https://githu
   permission on the install folder is not removed.
 - **A rollback doesn't restore the account**, because its password isn't kept.
 
+## IIS sites
+
+- **The pool account's password isn't checked before the first change.** As with a service, a wrong password is found
+  when the site starts, after its files were replaced.
+- **The "Log on as a batch job" right isn't checked.** IIS normally gives it to pool accounts through the
+  `IIS_IUSRS` group, but a policy can take it away.
+- **Nothing the sites need is installed.** IIS, the ASP.NET Core Module and Application Initialization must already
+  be on the server.
+
 ## Secrets
 
 - **Settings are stored in the service's registry key, which local users can read.** Treat a secret stored there
-  like one stored in a configuration file on the server.
+  like one stored in a configuration file on the server. A site's settings are kept in IIS's configuration, which
+  only administrators and the site's pool can read.
+- **A site's backup can hold its pool account's password.** The backup folder is for administrators only.
 - **A package that carries secrets holds them as plain text.** Keep it where only the people allowed to know them
   can read it.
 

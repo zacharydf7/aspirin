@@ -1,0 +1,13 @@
+﻿<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- The package is built with "dotnet run", so the Aspire CLI bundle is not needed. -->
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sample.Web\Sample.Web.csproj" />
+    <ProjectReference Include="..\..\src\Aspirin.Hosting\Aspirin.Hosting.csproj" IsAspireProjectResource="false" />
+  </ItemGroup>
+</Project>

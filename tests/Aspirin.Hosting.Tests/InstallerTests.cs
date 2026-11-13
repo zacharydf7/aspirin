@@ -384,8 +384,9 @@ public sealed class InstallerTests : IAsyncDisposable
     private Task<(int ExitCode, string Output)> RunFunctionsAsync(string command) => PackageScripts.RunFunctionsAsync(_package.Root, command);
 
     private const string TestAccount = "aspirin-test";
-    // Windows Server rejects a password that contains the account name.
-    private const string TestPassword = "Xq7-Check-Pw-2041";
+    // Windows Server rejects a password that contains the account name, and "net user" asks for confirmation of one
+    // longer than 14 characters.
+    private const string TestPassword = "Xq7-Chk-Pw-204";
 
     private static string CheckPasswordCommand(string account, string password) =>
         $"Assert-AccountPassword (New-Object PSCredential('{account}', (ConvertTo-SecureString '{password}' -AsPlainText -Force)))";

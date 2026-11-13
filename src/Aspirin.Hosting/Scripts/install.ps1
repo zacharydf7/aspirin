@@ -105,7 +105,8 @@ function Test-AccountNeedsPassword {
     return -not ($Account -like 'NT AUTHORITY\*' -or $Account -like 'NT SERVICE\*' -or $Account.EndsWith('$'))
 }
 
-# Returns the credential for each user account that needs its password set, keyed by account name.
+# Returns the credential for each user account that needs its password set, keyed by account name, after checking
+# each password.
 function Get-AccountCredentials {
     param($Manifest, [pscredential]$Credential)
 
@@ -133,15 +134,23 @@ function Get-AccountCredentials {
         }
 
         try {
-            $credentials[$account] = Get-Credential -UserName $account -Message "Password for the account '$account'"
+            $prompted = Get-Credential -UserName $account -Message "Password for the account '$account'"
         }
         catch {
-            $credentials[$account] = $null
+            $prompted = $null
         }
 
-        if ($null -eq $credentials[$account]) {
+        if ($null -eq $prompted) {
             throw "The account '$account' needs its password. Pass -Credential, or run this script in an interactive session."
         }
+
+        # The prompt lets the user name be edited, but the package sets this account, so that's the one to check.
+        $credentials[$account] = New-Object System.Management.Automation.PSCredential($account, $prompted.Password)
+    }
+
+    # A wrong password would otherwise only show when the service or site starts, after its files were replaced.
+    foreach ($credential in $credentials.Values) {
+        Assert-AccountPassword $credential
     }
 
     return $credentials

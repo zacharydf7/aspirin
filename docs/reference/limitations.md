@@ -15,9 +15,8 @@ about before you rely on it. The ones that are planned work are tracked on
 
 ## Service accounts
 
-- **The "Log on as a service" right isn't granted.** An account without it fails when the service starts.
-- **The password isn't checked before the first change.** A wrong password is found when the service starts, after
-  its files were replaced. Roll back, then install again with the right one.
+- **The "Log on as a service" right isn't granted or checked.** The installer checks the password before it changes
+  anything, but an account without the right still fails when the service starts, after its files were replaced.
 - **Group managed service accounts have not been tried.**
 - **An earlier account keeps its read access.** When an install changes the account, the previous account's
   permission on the install folder is not removed.
@@ -25,8 +24,6 @@ about before you rely on it. The ones that are planned work are tracked on
 
 ## IIS sites
 
-- **The pool account's password isn't checked before the first change.** As with a service, a wrong password is found
-  when the site starts, after its files were replaced.
 - **The "Log on as a batch job" right isn't checked.** IIS normally gives it to pool accounts through the
   `IIS_IUSRS` group, but a policy can take it away.
 - **Nothing the sites need is installed.** IIS, the ASP.NET Core Module and Application Initialization must already

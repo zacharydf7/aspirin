@@ -280,7 +280,7 @@ public sealed class SiteInstallerTests : IClassFixture<SiteInstallerTests.Certif
     private static async Task AddCertificateBindingAsync(string endpoint, string appId)
     {
         var added = await PublishedSample.RunAsync("netsh.exe",
-            ["http", "add", "sslcert", endpoint, $"certhash={await Certificate.ThumbprintAsync()}", $"appid={appId}"]);
+            ["http", "add", "sslcert", endpoint, $"certhash={await Certificate.ThumbprintAsync()}", $"appid={appId}", "certstorename=MY"]);
         Assert.True(added.ExitCode == 0, added.Output);
     }
 

@@ -15,8 +15,9 @@ about before you rely on it. The ones that are planned work are tracked on
 
 ## Service accounts
 
-- **The "Log on as a service" right isn't granted or checked.** The installer checks the password before it changes
-  anything, but an account without the right still fails when the service starts, after its files were replaced.
+- **The "Log on as a service" right isn't granted.** The installer checks it before it changes anything and stops if
+  it's missing, but an administrator or Group Policy has to grant it. It's checked only on runs that set the
+  account's password, so a run that keeps the same account without `-Credential` doesn't check it.
 - **Group managed service accounts have not been tried.**
 - **An earlier account keeps its read access.** When an install changes the account, the previous account's
   permission on the install folder is not removed.
@@ -24,8 +25,9 @@ about before you rely on it. The ones that are planned work are tracked on
 
 ## IIS sites
 
-- **The "Log on as a batch job" right isn't checked.** IIS normally gives it to pool accounts through the
-  `IIS_IUSRS` group, but a policy can take it away.
+- **A policy that denies a pool account the "Log on as a batch job" right isn't always found.** When `IIS_IUSRS`
+  has the right, as it does by default, the installer doesn't check the account itself, because IIS adds that group
+  to every pool's identity.
 - **Nothing the sites need is installed.** IIS, the ASP.NET Core Module and Application Initialization must already
   be on the server.
 

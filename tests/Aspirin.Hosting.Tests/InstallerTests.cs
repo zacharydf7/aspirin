@@ -246,6 +246,78 @@ public sealed class InstallerTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AssertAccountLogon_ShouldThrow_WhenTheAccountLacksTheRightToLogOnAsAService()
+    {
+        Assert.SkipUnless(PackageScripts.IsElevated(), "Creating a local account needs an elevated session.");
+        try
+        {
+            // A new local account is only in Users, which doesn't have the right.
+            await CreateTestAccountAsync();
+
+            var result = await RunFunctionsAsync($@"Assert-AccountLogon {Credential($@".\{TestAccount}", TestPassword)} Service");
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains($@"The account '.\{TestAccount}' lacks the 'Log on as a service' right", result.Output);
+        }
+        finally
+        {
+            await PublishedPackage.RunAsync("net.exe", ["user", TestAccount, "/delete"]);
+        }
+    }
+
+    [Fact]
+    public async Task AssertAccountLogon_ShouldPass_WhenAGroupOfTheAccountHasTheRight()
+    {
+        Assert.SkipUnless(PackageScripts.IsElevated(), "Creating a local account needs an elevated session.");
+        try
+        {
+            // Administrators may log on as a batch job by default.
+            await CreateTestAccountAsync();
+            await PublishedPackage.RunAsync("net.exe", ["localgroup", "Administrators", TestAccount, "/add"]);
+
+            var result = await RunFunctionsAsync($@"Assert-AccountLogon {Credential($@".\{TestAccount}", TestPassword)} Batch");
+
+            Assert.True(result.ExitCode == 0, result.Output);
+        }
+        finally
+        {
+            await PublishedPackage.RunAsync("net.exe", ["user", TestAccount, "/delete"]);
+        }
+    }
+
+    [Fact]
+    public async Task GetUserRightHolders_ShouldListAdministrators_WhenGivenTheBatchLogonRight()
+    {
+        Assert.SkipUnless(PackageScripts.IsElevated(), "Reading local security policy needs an elevated session.");
+
+        var result = await RunFunctionsAsync("Get-UserRightHolders 'SeBatchLogonRight'");
+
+        Assert.True(result.ExitCode == 0, result.Output);
+        Assert.Contains("S-1-5-32-544", result.Output.Split(Environment.NewLine));
+    }
+
+    [Fact]
+    public async Task AssertPoolLogon_ShouldPass_WhenIisUsersHaveTheBatchLogonRight()
+    {
+        var appCmd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"System32\inetsrv\appcmd.exe");
+        Assert.SkipUnless(PackageScripts.IsElevated() && File.Exists(appCmd), "Checking a pool account needs an elevated session and IIS.");
+        try
+        {
+            // Installing IIS gives IIS_IUSRS the right, and IIS adds that group to every pool's identity, so an account
+            // with no right of its own may still run a pool.
+            await CreateTestAccountAsync();
+
+            var result = await RunFunctionsAsync($@"Assert-PoolLogon {Credential($@".\{TestAccount}", TestPassword)}");
+
+            Assert.True(result.ExitCode == 0, result.Output);
+        }
+        finally
+        {
+            await PublishedPackage.RunAsync("net.exe", ["user", TestAccount, "/delete"]);
+        }
+    }
+
+    [Fact]
     public async Task Install_ShouldUpdateTheSameService_WhenRunTwice()
     {
         Assert.SkipUnless(PackageScripts.IsElevated(), "Installing a Windows service needs an elevated session.");
@@ -388,8 +460,10 @@ public sealed class InstallerTests : IAsyncDisposable
     // longer than 14 characters.
     private const string TestPassword = "Xq7-Chk-Pw-204";
 
-    private static string CheckPasswordCommand(string account, string password) =>
-        $"Assert-AccountPassword (New-Object PSCredential('{account}', (ConvertTo-SecureString '{password}' -AsPlainText -Force)))";
+    private static string CheckPasswordCommand(string account, string password) => $"Assert-AccountPassword {Credential(account, password)}";
+
+    private static string Credential(string account, string password) =>
+        $"(New-Object PSCredential('{account}', (ConvertTo-SecureString '{password}' -AsPlainText -Force)))";
 
     private static async Task CreateTestAccountAsync()
     {

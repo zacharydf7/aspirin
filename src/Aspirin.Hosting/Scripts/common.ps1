@@ -2,6 +2,12 @@
 
 $ErrorActionPreference = 'Stop'
 
+# Windows PowerShell started from PowerShell 7 inherits a module path that hides its own modules, and built-in
+# commands such as Get-FileHash go missing. Putting its own module folder first brings them back.
+if ($PSVersionTable.PSEdition -ne 'Core') {
+    $env:PSModulePath = "$PSHOME\Modules;$env:PSModulePath"
+}
+
 function Write-Step {
     param([string]$Message)
     Write-Host "    $Message"

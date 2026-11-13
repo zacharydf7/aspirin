@@ -287,47 +287,105 @@ public static int Try(string user, string domain, string password, int logonType
     }
 }
 
-# Returns the SIDs that hold a user right, such as SeBatchLogonRight, under security policy, both local and from the
-# domain.
+# Returns the SIDs that hold a user right, such as SeBatchLogonRight. They're read from Windows itself, which holds
+# the rights domain Group Policy sets as well as local ones; secedit's export can leave the rights out.
 function Get-UserRightHolders {
     param([string]$Right)
 
-    $path = [IO.Path]::GetTempFileName()
-    try {
-        # /mergedpolicy includes rights that domain Group Policy sets, not only local ones.
-        & secedit.exe /export /mergedpolicy /areas USER_RIGHTS /cfg $path /quiet | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "Reading the user rights from security policy failed (secedit exit code $LASTEXITCODE)."
+    if (-not ('Aspirin.UserRights' -as [type])) {
+        Add-Type -Namespace Aspirin -Name UserRights -MemberDefinition @'
+[StructLayout(LayoutKind.Sequential)]
+private struct LsaUnicodeString
+{
+    public ushort Length;
+    public ushort MaximumLength;
+    public IntPtr Buffer;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+private struct LsaObjectAttributes
+{
+    public int Length;
+    public IntPtr RootDirectory;
+    public IntPtr ObjectName;
+    public uint Attributes;
+    public IntPtr SecurityDescriptor;
+    public IntPtr SecurityQualityOfService;
+}
+
+[DllImport("advapi32.dll")]
+private static extern uint LsaOpenPolicy(IntPtr systemName, ref LsaObjectAttributes attributes, uint access, out IntPtr policy);
+
+[DllImport("advapi32.dll")]
+private static extern uint LsaEnumerateAccountsWithUserRight(IntPtr policy, ref LsaUnicodeString right, out IntPtr buffer, out uint count);
+
+[DllImport("advapi32.dll")]
+private static extern uint LsaFreeMemory(IntPtr buffer);
+
+[DllImport("advapi32.dll")]
+private static extern uint LsaClose(IntPtr policy);
+
+[DllImport("advapi32.dll")]
+private static extern int LsaNtStatusToWinError(uint status);
+
+private const uint PolicyViewLocalInformation = 0x1;
+private const uint PolicyLookupNames = 0x800;
+private const uint StatusNoMoreEntries = 0x8000001A;
+
+public static string[] Holders(string right)
+{
+    var attributes = new LsaObjectAttributes();
+    attributes.Length = Marshal.SizeOf(attributes);
+    IntPtr policy;
+    uint status = LsaOpenPolicy(IntPtr.Zero, ref attributes, PolicyViewLocalInformation | PolicyLookupNames, out policy);
+    if (status != 0)
+    {
+        throw new System.ComponentModel.Win32Exception(LsaNtStatusToWinError(status));
+    }
+
+    var name = new LsaUnicodeString();
+    name.Buffer = Marshal.StringToHGlobalUni(right);
+    name.Length = (ushort)(right.Length * 2);
+    name.MaximumLength = (ushort)(name.Length + 2);
+    try
+    {
+        IntPtr buffer;
+        uint count;
+        status = LsaEnumerateAccountsWithUserRight(policy, ref name, out buffer, out count);
+        // No account holding the right is reported as the end of an empty list.
+        if (status == StatusNoMoreEntries)
+        {
+            return new string[0];
         }
-        # Get-Content reads the file in whatever encoding secedit wrote, which it marks with a byte order mark.
-        $lines = @(Get-Content -LiteralPath $path)
-        if ($lines -notcontains '[Privilege Rights]') {
-            throw "secedit exported the user rights in a form the installer doesn't recognize:`n$(($lines | Select-Object -First 10) -join "`n")"
-        }
-        $line = $lines | Where-Object { $_ -match "^$Right\s*=" } | Select-Object -First 1
-        if (-not $line) {
-            return @()
+        if (status != 0)
+        {
+            throw new System.ComponentModel.Win32Exception(LsaNtStatusToWinError(status));
         }
 
-        # A holder is written as *SID, or as a name when secedit couldn't write its SID.
-        return @(($line -split '=', 2)[1].Split(',') | ForEach-Object {
-            $holder = $_.Trim()
-            if ($holder.StartsWith('*')) {
-                $holder.Substring(1)
+        try
+        {
+            var holders = new string[count];
+            for (int i = 0; i < count; i++)
+            {
+                holders[i] = new System.Security.Principal.SecurityIdentifier(Marshal.ReadIntPtr(buffer, i * IntPtr.Size)).Value;
             }
-            else {
-                try {
-                    ([Security.Principal.NTAccount]$holder).Translate([Security.Principal.SecurityIdentifier]).Value
-                }
-                catch {
-                    $holder
-                }
-            }
-        })
+            return holders;
+        }
+        finally
+        {
+            LsaFreeMemory(buffer);
+        }
     }
-    finally {
-        Remove-Item -LiteralPath $path -ErrorAction SilentlyContinue
+    finally
+    {
+        Marshal.FreeHGlobal(name.Buffer);
+        LsaClose(policy);
     }
+}
+'@
+    }
+
+    return @([Aspirin.UserRights]::Holders($Right))
 }
 
 # Lets the account read and run what is in the folder, on top of the permissions the folder already has.

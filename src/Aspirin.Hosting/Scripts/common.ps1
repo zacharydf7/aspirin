@@ -240,6 +240,160 @@ function Assert-AccountPassword {
     }
 }
 
+# Fails unless Windows lets the account log on the way a service (Service) or an application pool (Batch) does.
+# Trying the logon checks the right as Windows will when the service or pool starts: granted to the account or one of
+# its groups, and not taken away by a policy that denies it. The attempt shows in the Security event log as a logon.
+function Assert-AccountLogon {
+    param([pscredential]$Credential, [ValidateSet('Service', 'Batch')][string]$LogonType)
+
+    if (-not ('Aspirin.Logon' -as [type])) {
+        Add-Type -Namespace Aspirin -Name Logon -MemberDefinition @'
+[DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+private static extern bool LogonUser(string user, string domain, string password, int logonType, int provider, out IntPtr token);
+
+[DllImport("kernel32.dll")]
+private static extern bool CloseHandle(IntPtr handle);
+
+// Returns 0 when the logon works, or the Windows error code.
+public static int Try(string user, string domain, string password, int logonType)
+{
+    IntPtr token;
+    if (LogonUser(user, domain, password, logonType, 0, out token))
+    {
+        CloseHandle(token);
+        return 0;
+    }
+    return Marshal.GetLastWin32Error();
+}
+'@
+    }
+
+    $account = $Credential.UserName
+    $target = Get-AccountContext $account
+    $domain = $target.ContextName
+    if ($target.ContextType -eq 'Machine') {
+        $domain = '.'
+    }
+
+    $logonTypes = @{ Batch = 4; Service = 5 }
+    $rights = @{ Batch = 'Log on as a batch job'; Service = 'Log on as a service' }
+    $logonTypeNotGranted = 1385  # ERROR_LOGON_TYPE_NOT_GRANTED
+    $code = [Aspirin.Logon]::Try($target.UserName, $domain, $Credential.GetNetworkCredential().Password, $logonTypes[$LogonType])
+    if ($code -eq $logonTypeNotGranted) {
+        throw "The account '$account' lacks the '$($rights[$LogonType])' right, or a policy denies it. Ask an administrator to grant it, then run the installer again."
+    }
+    if ($code -ne 0) {
+        throw "Windows wouldn't let '$account' log on to check its '$($rights[$LogonType])' right: $((New-Object ComponentModel.Win32Exception($code)).Message)"
+    }
+}
+
+# Returns the SIDs that hold a user right, such as SeBatchLogonRight. They're read from the local security authority
+# (LSA), which holds the rights that domain Group Policy sets as well as local ones; secedit's export can leave the
+# rights out entirely.
+function Get-UserRightHolders {
+    param([string]$Right)
+
+    if (-not ('Aspirin.UserRights' -as [type])) {
+        Add-Type -Namespace Aspirin -Name UserRights -MemberDefinition @'
+[StructLayout(LayoutKind.Sequential)]
+private struct LsaUnicodeString
+{
+    public ushort Length;
+    public ushort MaximumLength;
+    public IntPtr Buffer;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+private struct LsaObjectAttributes
+{
+    public int Length;
+    public IntPtr RootDirectory;
+    public IntPtr ObjectName;
+    public uint Attributes;
+    public IntPtr SecurityDescriptor;
+    public IntPtr SecurityQualityOfService;
+}
+
+[DllImport("advapi32.dll")]
+private static extern uint LsaOpenPolicy(IntPtr systemName, ref LsaObjectAttributes attributes, uint access, out IntPtr policy);
+
+[DllImport("advapi32.dll")]
+private static extern uint LsaEnumerateAccountsWithUserRight(IntPtr policy, ref LsaUnicodeString right, out IntPtr buffer, out uint count);
+
+[DllImport("advapi32.dll")]
+private static extern uint LsaFreeMemory(IntPtr buffer);
+
+[DllImport("advapi32.dll")]
+private static extern uint LsaClose(IntPtr policy);
+
+[DllImport("advapi32.dll")]
+private static extern int LsaNtStatusToWinError(uint status);
+
+private const uint PolicyViewLocalInformation = 0x1;
+private const uint PolicyLookupNames = 0x800;
+private const uint StatusNoMoreEntries = 0x8000001A;
+
+public static string[] Holders(string right)
+{
+    var attributes = new LsaObjectAttributes();
+    attributes.Length = Marshal.SizeOf(attributes);
+    IntPtr policy;
+    uint status = LsaOpenPolicy(IntPtr.Zero, ref attributes, PolicyViewLocalInformation | PolicyLookupNames, out policy);
+    if (status != 0)
+    {
+        throw new System.ComponentModel.Win32Exception(LsaNtStatusToWinError(status));
+    }
+
+    var name = new LsaUnicodeString();
+    name.Buffer = Marshal.StringToHGlobalUni(right);
+    name.Length = (ushort)(right.Length * 2);
+    name.MaximumLength = (ushort)(name.Length + 2);
+    try
+    {
+        IntPtr buffer;
+        uint count;
+        status = LsaEnumerateAccountsWithUserRight(policy, ref name, out buffer, out count);
+        // When no account holds the right, LSA returns STATUS_NO_MORE_ENTRIES instead of an empty list.
+        if (status == StatusNoMoreEntries)
+        {
+            return new string[0];
+        }
+        if (status != 0)
+        {
+            throw new System.ComponentModel.Win32Exception(LsaNtStatusToWinError(status));
+        }
+
+        try
+        {
+            var holders = new string[count];
+            for (int i = 0; i < count; i++)
+            {
+                holders[i] = new System.Security.Principal.SecurityIdentifier(Marshal.ReadIntPtr(buffer, i * IntPtr.Size)).Value;
+            }
+            return holders;
+        }
+        finally
+        {
+            LsaFreeMemory(buffer);
+        }
+    }
+    finally
+    {
+        Marshal.FreeHGlobal(name.Buffer);
+        LsaClose(policy);
+    }
+}
+'@
+    }
+
+    try {
+        return @([Aspirin.UserRights]::Holders($Right))
+    }
+    catch {
+        throw "Reading which accounts hold the '$Right' right failed: $($_.Exception.InnerException.Message)"
+    }
+}
+
 # Lets the account read and run what is in the folder, on top of the permissions the folder already has.
 function Grant-DirectoryRead {
     param([string]$Path, [string]$Account)

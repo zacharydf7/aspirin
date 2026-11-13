@@ -249,6 +249,17 @@ function Set-IisAppPool {
     }
 }
 
+# Fails unless the pool's account may log on as a batch job, which IIS needs to start the pool. IIS adds the
+# IIS_IUSRS group (S-1-5-32-568) to every pool's identity, and the group has the right by default, so the account is
+# checked on its own only when the group doesn't have it.
+function Assert-PoolLogon {
+    param([pscredential]$Credential)
+
+    if ((Get-UserRightHolders 'SeBatchLogonRight') -notcontains 'S-1-5-32-568') {
+        Assert-AccountLogon $Credential 'Batch'
+    }
+}
+
 # The bindingInformation IIS stores for a binding: address:port:host name.
 function Get-BindingInformation {
     param($Binding)

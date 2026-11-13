@@ -156,6 +156,27 @@ function Get-AccountCredentials {
     return $credentials
 }
 
+# Windows checks an account's right to log on when the service or pool starts, after its files were replaced, so the
+# right is checked here first. Only accounts the installer sets a password for are checked: an account that isn't
+# changing has already been starting the service or pool, and without its password the logon can't be tried.
+function Assert-LogonRights {
+    param($Manifest, [hashtable]$Credentials)
+
+    foreach ($resource in $Manifest.resources) {
+        $credential = $Credentials[[string](Get-ResourceAccount $resource)]
+        if (-not $credential) {
+            continue
+        }
+
+        if ($resource.kind -eq 'iisSite') {
+            Assert-PoolLogon $credential
+        }
+        else {
+            Assert-AccountLogon $credential 'Service'
+        }
+    }
+}
+
 function Write-InstallPlan {
     param($Resource, [string[]]$Environment, [bool]$CanReadIis)
 
@@ -499,6 +520,7 @@ try {
 
     Assert-IisReady $manifest
     $credentials = Get-AccountCredentials $manifest $Credential
+    Assert-LogonRights $manifest $credentials
 
     # Every backup this run takes is named after it, which is how rollback.ps1 finds the resources the run changed.
     # UTC keeps the names in order when the clocks go back.

@@ -1,14 +1,12 @@
-# Handoff
+# Aspirin
 
-Handoff builds an installation package for Windows services from an Aspire AppHost. A build machine creates the
+Aspirin builds an installation package for Windows services from an Aspire AppHost. A build machine creates the
 package, and someone with access to the server installs it. The build machine never needs access to the server,
 and neither Docker nor the Aspire CLI is involved.
 
-"Handoff" is a working name.
-
 ## Describe the service
 
-Reference `Handoff.Aspire.Hosting` from the AppHost and mark the project:
+Reference `Aspirin.Hosting` from the AppHost and mark the project:
 
 ```csharp
 builder.AddProject<Projects.Worker>("worker")
@@ -33,7 +31,7 @@ export ASPIRE_INTERACTIVITY_ENABLED=false
 dotnet run --project path/to/AppHost -- --operation publish --step publish --output-path artifacts --clear-cache true
 ```
 
-The package is written to `artifacts/handoff`.
+The package is written to `artifacts/aspirin`.
 
 Both settings matter on a build machine:
 
@@ -47,10 +45,36 @@ and `ConnectionStrings__jobs` for a connection string named `jobs`. Unless the p
 Settings below), a secret needs no value at this point: Aspire logs that it is missing, and the package is built
 without it. Add `--environment <name>` to build for an environment other than Production.
 
+### In Bitbucket Pipelines
+
+```yaml
+- step:
+    name: Build the installation package
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    script:
+      - export ASPIRE_INTERACTIVITY_ENABLED=false
+      - dotnet run --project path/to/AppHost -- --operation publish --step publish --output-path artifacts --clear-cache true
+    artifacts:
+      - artifacts/aspirin/**
+```
+
+A self-hosted Windows runner needs the .NET SDK installed instead of the image. Its script lines are PowerShell, so
+the first one becomes `$env:ASPIRE_INTERACTIVITY_ENABLED = 'false'`.
+
+Pipeline variables reach the AppHost as environment variables. A variable doesn't have to be renamed to
+`Parameters__<name>`: a parameter can read it under the name it already has, and the value stays in Bitbucket,
+where it can be changed without a commit:
+
+```csharp
+var rabbitHost = builder.AddParameterFromConfiguration("rabbitmq-host", "RABBITMQ_HOST");
+```
+
+This step has not been run on Bitbucket yet.
+
 ## What the package holds
 
 ```text
-handoff/
+aspirin/
   package.json        the services, where they are installed and their settings
   checksums.sha256    the SHA-256 hash of every other file
   install.ps1         installs or updates the services
@@ -66,7 +90,7 @@ lets the scripts refuse a `package.json` in a format they don't know.
 
 ### Settings
 
-A setting is an environment variable the service runs with. Handoff takes them from the environment Aspire would
+A setting is an environment variable the service runs with. Aspirin takes them from the environment Aspire would
 give the project, and writes each one to `package.json` in one of three ways:
 
 | The value comes from | In the package |
@@ -135,7 +159,6 @@ in one AppHost share any of them, or when one service's folder is inside another
 - Group managed service accounts have not been tried.
 - Settings are stored in the service's registry key, which local users can read. Treat a secret stored there
   like one stored in a configuration file on the server.
-- `bitbucket-pipelines.yml` has not been run, and building the package on Linux has not been tried.
 
 ## Tests
 
@@ -145,4 +168,7 @@ dotnet test
 
 The tests publish the sample AppHost and run the installer against the package. The tests that install the sample
 service run only in an elevated session on Windows and are skipped otherwise. They install a service named
-`HandoffSampleWorker` under `C:\Program Files` and remove it afterward.
+`AspirinSampleWorker` under `C:\Program Files` and remove it afterward.
+
+GitHub Actions runs the tests on Linux and on Windows. The Windows runner is elevated, so that job includes the
+tests that install the service. The Linux job shows that the package builds there.

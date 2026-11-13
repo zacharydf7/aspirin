@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -13,6 +14,9 @@ internal sealed record PackageManifest(int SchemaVersion, string Application, st
 
     private static readonly JsonSerializerOptions s_jsonOptions = new(JsonSerializerDefaults.Web)
     {
+        // The default encoder writes "+" and "&" as \u escapes, which makes versions and connection strings hard
+        // to read for someone inspecting the file. Relaxed escaping is safe because nothing renders the file as HTML.
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         WriteIndented = true,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };

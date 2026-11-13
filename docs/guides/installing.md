@@ -71,7 +71,8 @@ For each service, in order:
 2. **Stops** the service, if it exists, and waits up to a minute for it to stop.
 3. **Replaces** the installed files with the ones in the package. Files that aren't in the package are removed.
 4. **Creates** the service, or **updates** the existing one: its program, display name, description and start mode.
-5. **Sets the account** the service runs as, and gives that account read access to the install folder.
+5. **Sets the account** the service runs as, and gives that account read access to the install folder. If the
+   account changed, the earlier one loses the read access the installer gave it.
 6. **Writes the settings** as the service's environment variables.
 7. **Starts** the service and checks that it is still running three seconds later. A service whose start mode is
    manual is left stopped.

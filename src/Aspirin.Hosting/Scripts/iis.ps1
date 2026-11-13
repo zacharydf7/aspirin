@@ -130,6 +130,28 @@ function Get-PoolFileAccount {
     }
 }
 
+# The account that file permissions are granted to for an existing pool, given its APPPOOL element from appcmd, or
+# nothing for LocalSystem. IIS leaves identityType out when it's the default, the pool's own identity.
+function Get-ExistingPoolFileAccount {
+    param($Pool)
+
+    $processModel = $Pool.SelectSingleNode('add/processModel')
+    $identityType = 'ApplicationPoolIdentity'
+    if ($processModel -and $processModel.GetAttribute('identityType')) {
+        $identityType = $processModel.GetAttribute('identityType')
+    }
+
+    $accounts = @{
+        ApplicationPoolIdentity = $null; LocalSystem = 'LocalSystem'
+        NetworkService = 'NT AUTHORITY\NetworkService'; LocalService = 'NT AUTHORITY\LocalService'
+    }
+    $account = $accounts[$identityType]
+    if ($identityType -eq 'SpecificUser') {
+        $account = $processModel.GetAttribute('userName')
+    }
+    return Get-PoolFileAccount ([pscustomobject]@{ account = $account; appPoolName = $Pool.GetAttribute('APPPOOL.NAME') })
+}
+
 # The user account an existing pool runs as, or nothing when it doesn't exist or uses a built-in identity.
 function Get-PoolUserName {
     param([string]$Name)

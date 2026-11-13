@@ -246,6 +246,53 @@ public sealed class InstallerTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task RevokeDirectoryRead_ShouldRemoveOnlyTheInstallersGrant_WhenTheAccountHasOtherPermissions()
+    {
+        var folder = Path.Combine(_workFolder, "service");
+        const string Account = @"NT AUTHORITY\LOCAL SERVICE";
+
+        // The (W) grant has no inheritance flags, so icacls keeps it apart from the installer's (OI)(CI)RX grant.
+        var result = await RunFunctionsAsync(
+            $"New-ProtectedDirectory '{folder}'; Grant-DirectoryRead '{folder}' '{Account}'; " +
+            $"& icacls.exe '{folder}' /grant '{Account}:(W)' | Out-Null; Revoke-DirectoryRead '{folder}' '{Account}'");
+
+        Assert.True(result.ExitCode == 0, result.Output);
+        var permissions = (await PublishedPackage.RunAsync("icacls.exe", [folder])).Output;
+        Assert.False(permissions.Contains($"{Account}:(OI)(CI)(RX)", StringComparison.OrdinalIgnoreCase), permissions);
+        Assert.True(permissions.Contains($"{Account}:(W)", StringComparison.OrdinalIgnoreCase), permissions);
+    }
+
+    [Fact]
+    public async Task RevokeDirectoryRead_ShouldLeaveTheFolderAlone_WhenTheAccountNoLongerExists()
+    {
+        var folder = Path.Combine(_workFolder, "service");
+
+        var result = await RunFunctionsAsync($@"New-ProtectedDirectory '{folder}'; Revoke-DirectoryRead '{folder}' '.\aspirin-no-such-account'");
+
+        Assert.True(result.ExitCode == 0, result.Output);
+        // A lookup that fails for another reason warns; an account that's gone is expected and doesn't.
+        Assert.DoesNotContain("WARNING", result.Output);
+    }
+
+    [Theory]
+    [InlineData("", @"IIS AppPool\Web")]
+    [InlineData("identityType=\"ApplicationPoolIdentity\"", @"IIS AppPool\Web")]
+    [InlineData("identityType=\"NetworkService\"", @"NT AUTHORITY\NETWORK SERVICE")]
+    [InlineData("identityType=\"SpecificUser\" userName=\"CORP\\svc-web\"", @"CORP\svc-web")]
+    [InlineData("identityType=\"LocalSystem\"", "")]
+    public async Task GetExistingPoolFileAccount_ShouldNameTheAccountGivenReadAccess_WhenGivenEachIdentity(string processModel, string expected)
+    {
+        var xml = $"<appcmd><APPPOOL APPPOOL.NAME=\"Web\"><add name=\"Web\"><processModel {processModel} /></add></APPPOOL></appcmd>";
+
+        var result = await RunFunctionsAsync(
+            $"$document = New-Object Xml.XmlDocument; $document.LoadXml('{xml}'); " +
+            "[string](Get-ExistingPoolFileAccount $document.DocumentElement.SelectSingleNode('APPPOOL'))");
+
+        Assert.True(result.ExitCode == 0, result.Output);
+        Assert.Equal(expected, result.Output.Trim());
+    }
+
+    [Fact]
     public async Task Install_ShouldUpdateTheSameService_WhenRunTwice()
     {
         Assert.SkipUnless(PackageScripts.IsElevated(), "Installing a Windows service needs an elevated session.");

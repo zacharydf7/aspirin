@@ -327,6 +327,12 @@ function Install-WindowsService {
         Invoke-ServiceChange $name @{ StartName = $account; StartPassword = '' }
     }
 
+    # An earlier account loses the read access the installer gave it. That comes before the grant, so when the
+    # earlier name is just another way of writing the new account, the grant puts its access back.
+    if ($existing -and $existing.StartName -ne $account -and $existing.StartName -ne 'LocalSystem') {
+        Revoke-DirectoryRead $Resource.installPath $existing.StartName
+    }
+
     # Granted on every run, because the account can change between installs. It comes after the service exists,
     # because a virtual account (NT SERVICE\<name>) can't be looked up before then.
     if ($account -ne 'LocalSystem') {
@@ -419,6 +425,10 @@ function Install-IisSite {
     else {
         Write-Step "Creating the application pool '$poolName'"
     }
+    $previousFileAccount = $null
+    if ($pool) {
+        $previousFileAccount = Get-ExistingPoolFileAccount $pool
+    }
     Set-IisAppPool $definition $Environment $Credential $backup
 
     if ($site) {
@@ -442,6 +452,9 @@ function Install-IisSite {
     # Granted on every run, because the account can change between installs. It comes after the pool exists,
     # because its identity (IIS AppPool\<name>) can't be looked up before then.
     $fileAccount = Get-PoolFileAccount $definition
+    if ($previousFileAccount -and $previousFileAccount -ne $fileAccount) {
+        Revoke-DirectoryRead $Resource.installPath $previousFileAccount
+    }
     if ($fileAccount) {
         Grant-DirectoryRead $Resource.installPath $fileAccount
     }

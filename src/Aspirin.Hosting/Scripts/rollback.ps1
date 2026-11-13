@@ -74,11 +74,30 @@ function Restore-WindowsService {
 
     if ($existing.StartName -ne $record.account) {
         Write-Warning "The service ran as '$($record.account)' before the install and now runs as '$($existing.StartName)'. Change it back in the Services console if needed."
+
+        # The install took the earlier account's read access to the files away. Giving it back means that setting the
+        # account back is all that's needed.
+        if ($record.account -and $record.account -ne 'LocalSystem' -and (Test-Path -LiteralPath $Resource.installPath)) {
+            Restore-DirectoryRead $Resource.installPath $record.account
+        }
     }
 
     if ($record.wasRunning) {
         Write-Step 'Starting the service'
         Start-ServiceAndVerify $name
+    }
+}
+
+# Gives an earlier account its read access again. When that fails, for example because the account was deleted
+# since the install, it warns instead of stopping, so the rest of the rollback still runs.
+function Restore-DirectoryRead {
+    param([string]$Path, [string]$Account)
+
+    try {
+        Grant-DirectoryRead $Path $Account
+    }
+    catch {
+        Write-Warning "Couldn't give '$Account' read access to '$Path' again: $($_.Exception.Message)"
     }
 }
 
@@ -129,13 +148,27 @@ function Restore-IisSite {
     if (Get-IisSite $siteName) {
         Invoke-AppCmd delete site $siteName | Out-Null
     }
-    if (Get-IisAppPool $poolName) {
+    $currentFileAccount = $null
+    $currentPool = Get-IisAppPool $poolName
+    if ($currentPool) {
+        $currentFileAccount = Get-ExistingPoolFileAccount $currentPool
         Invoke-AppCmd delete apppool $poolName | Out-Null
     }
 
     if ($record.poolExisted) {
         Write-Step "Restoring the application pool '$poolName'"
         Import-IisObject 'apppool' (Join-Path $backup 'apppool.xml')
+
+        # The install moved the files' read access from the pool's earlier account to its new one, so it moves back.
+        $restoredFileAccount = Get-ExistingPoolFileAccount (Get-IisAppPool $poolName)
+        if ($restoredFileAccount -ne $currentFileAccount -and (Test-Path -LiteralPath $Resource.installPath)) {
+            if ($currentFileAccount) {
+                Revoke-DirectoryRead $Resource.installPath $currentFileAccount
+            }
+            if ($restoredFileAccount) {
+                Restore-DirectoryRead $Resource.installPath $restoredFileAccount
+            }
+        }
     }
     else {
         Write-Step "Removed the application pool '$poolName', which did not exist before the install"

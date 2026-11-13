@@ -18,8 +18,10 @@ about before you rely on it. The ones that are planned work are tracked on
 - **The "Log on as a service" right isn't granted or checked.** The installer checks the password before it changes
   anything, but an account without the right still fails when the service starts, after its files were replaced.
 - **Group managed service accounts have not been tried.**
-- **An earlier account keeps its read access.** When an install changes the account, the previous account's
-  permission on the install folder is not removed.
+- **An administrator's matching grant is removed with the installer's.** When the account changes, the installer
+  removes the earlier account's read access to the install folder. If an administrator had given that account the
+  same read access, or a smaller read permission that Windows merged with the installer's grant, it can't be told
+  apart and is removed too.
 - **A rollback doesn't restore the account**, because its password isn't kept.
 
 ## IIS sites

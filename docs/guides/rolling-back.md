@@ -43,7 +43,8 @@ Running the rollback twice restores the same backups again. It doesn't step back
 ## What doesn't come back
 
 - **The service account.** Its password isn't kept, so the rollback can't set the earlier account. It warns when
-  the account differs from the one before the install. Change it back in the Services console.
+  the account differs from the one before the install, and gives the earlier account back its read access to the
+  install folder. Change the account back in the Services console.
 - **Anything outside the install folder.** Databases, files the service wrote elsewhere, and settings other
   software holds are not part of a backup.
 

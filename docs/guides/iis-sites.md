@@ -113,7 +113,8 @@ accounts such as `NT AUTHORITY\NetworkService` need none either. For a user acco
 password, or takes it from `-Credential`, as it does for a service. IIS keeps the password, so it's asked for only
 when the pool is created or its account changes.
 
-The account gets read access to the install folder.
+The account gets read access to the install folder. When the account changes, the earlier one loses the read access
+the installer gave it.
 
 ## What the installer does
 

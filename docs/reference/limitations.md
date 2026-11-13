@@ -19,8 +19,10 @@ about before you rely on it. The ones that are planned work are tracked on
   it's missing, but an administrator or Group Policy has to grant it. It's checked only on runs that set the
   account's password, so a run that keeps the same account without `-Credential` doesn't check it.
 - **Group managed service accounts have not been tried.**
-- **An earlier account keeps its read access.** When an install changes the account, the previous account's
-  permission on the install folder is not removed.
+- **An administrator's matching grant is removed with the installer's.** When the account changes, the installer
+  removes the earlier account's read access to the install folder. If an administrator had given that account the
+  same read access, or a smaller read permission that Windows merged with the installer's grant, it can't be told
+  apart and is removed too.
 - **A rollback doesn't restore the account**, because its password isn't kept.
 
 ## IIS sites

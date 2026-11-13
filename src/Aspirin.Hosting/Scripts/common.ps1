@@ -409,6 +409,42 @@ function Grant-DirectoryRead {
     }
 }
 
+# Takes away the read access Grant-DirectoryRead gave the account. Its other permissions on the folder stay,
+# including inherited ones. The exception is an identical read permission an administrator gave it, which can't be
+# told apart from the installer's and goes too. An account that no longer exists is left alone, because its name
+# can't be matched to the permission anymore.
+function Revoke-DirectoryRead {
+    param([string]$Path, [string]$Account)
+
+    if ($Account.StartsWith('.\')) {
+        $Account = $env:COMPUTERNAME + $Account.Substring(1)
+    }
+    try {
+        $sid = ([Security.Principal.NTAccount]$Account).Translate([Security.Principal.SecurityIdentifier])
+    }
+    catch {
+        if ($_.Exception.GetBaseException() -is [Security.Principal.IdentityNotMappedException]) {
+            return
+        }
+        Write-Warning "Couldn't look up '$Account' to take away its read access to '$Path', so it may still have it: $($_.Exception.GetBaseException().Message)"
+        return
+    }
+
+    # What icacls writes for "(OI)(CI)RX".
+    $rights = [Security.AccessControl.FileSystemRights]'ReadAndExecute, Synchronize'
+    $inheritance = [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit'
+    $folder = Get-Item -LiteralPath $Path
+    $acl = $folder.GetAccessControl('Access')
+    $grants = @($acl.GetAccessRules($true, $false, [Security.Principal.SecurityIdentifier]) | Where-Object {
+        $_.IdentityReference -eq $sid -and $_.AccessControlType -eq 'Allow' -and $_.FileSystemRights -eq $rights -and
+            $_.InheritanceFlags -eq $inheritance -and $_.PropagationFlags -eq 'None'
+    })
+    if ($grants.Count -gt 0) {
+        $grants | ForEach-Object { [void]$acl.RemoveAccessRuleSpecific($_) }
+        $folder.SetAccessControl($acl)
+    }
+}
+
 # Returns the accounts, other than administrators and the system, that own the folder or can change what is in it.
 # With -AsParent it returns only the accounts that could replace a folder below this one.
 function Get-DirectoryWriters {

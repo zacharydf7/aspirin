@@ -25,7 +25,8 @@ more. Write logs and data somewhere else, and give the service account access to
 ## Folders that already exist
 
 The installer leaves the permissions of a folder it didn't create as they are, apart from adding the service
-account's read access to the install folder. Replacing them could break something that depends on them. Instead it
+account's read access to the install folder and, when the account changes, removing the read access it gave the
+earlier account. Replacing them could break something that depends on them. Instead it
 warns when an account other than administrators owns such a folder or can change it:
 
 ```text

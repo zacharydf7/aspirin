@@ -299,7 +299,12 @@ function Get-UserRightHolders {
         if ($LASTEXITCODE -ne 0) {
             throw "Reading the user rights from security policy failed (secedit exit code $LASTEXITCODE)."
         }
-        $line = Get-Content -LiteralPath $path -Encoding Unicode | Where-Object { $_ -match "^$Right\s*=" } | Select-Object -First 1
+        # Get-Content reads the file in whatever encoding secedit wrote, which it marks with a byte order mark.
+        $lines = @(Get-Content -LiteralPath $path)
+        if ($lines -notcontains '[Privilege Rights]') {
+            throw "secedit exported the user rights in a form the installer doesn't recognize:`n$(($lines | Select-Object -First 10) -join "`n")"
+        }
+        $line = $lines | Where-Object { $_ -match "^$Right\s*=" } | Select-Object -First 1
         if (-not $line) {
             return @()
         }

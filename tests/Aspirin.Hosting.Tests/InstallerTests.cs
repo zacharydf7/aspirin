@@ -167,14 +167,17 @@ public sealed class InstallerTests : IAsyncDisposable
     public async Task GrantDirectoryRead_ShouldAddReadAccessAndKeepTheOtherPermissions_WhenFolderAlreadyExists()
     {
         var folder = Path.Combine(_workFolder, "service");
-        var account = CurrentAccount();
 
-        var result = await RunFunctionsAsync($"New-ProtectedDirectory '{folder}'; Grant-DirectoryRead '{folder}' '{account}'");
+        // A service account, not the account running the test: on GitHub's runners the running account ends up with full
+        // control of a folder it grants itself read access to.
+        const string Account = @"NT AUTHORITY\LOCAL SERVICE";
+
+        var result = await RunFunctionsAsync($"New-ProtectedDirectory '{folder}'; Grant-DirectoryRead '{folder}' '{Account}'");
 
         Assert.True(result.ExitCode == 0, result.Output);
         // Assert.Contains would cut the listing short in its failure message, and the listing is what explains a failure.
         var permissions = (await PublishedPackage.RunAsync("icacls.exe", [folder])).Output;
-        Assert.True(permissions.Contains($"{account}:(OI)(CI)(RX)", StringComparison.OrdinalIgnoreCase), permissions);
+        Assert.True(permissions.Contains($"{Account}:(OI)(CI)(RX)", StringComparison.OrdinalIgnoreCase), permissions);
         Assert.True(permissions.Contains(@"NT AUTHORITY\SYSTEM:(OI)(CI)(F)", StringComparison.Ordinal), permissions);
     }
 

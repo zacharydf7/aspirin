@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [{ "src": "../src", "files": ["**/*.csproj"] }],
+      "dest": "api",
+      "properties": { "Configuration": "Release" }
+    }
+  ],
+  "build": {
+    "content": [
+      { "files": ["api/**.yml", "api/index.md"] },
+      { "files": ["*.md", "toc.yml", "guides/**.md", "guides/toc.yml", "reference/**.md", "reference/toc.yml"] }
+    ],
+    "resource": [
+      { "files": ["images/**"] }
+    ],
+    "dest": "_site",
+    "template": ["default", "modern", "template"],
+    "globalMetadata": {
+      "_appTitle": "Aspirin",
+      "_appName": "Aspirin",
+      "_appLogoPath": "images/logo.svg",
+      "_appFaviconPath": "images/logo.svg",
+      "_appFooter": "<span class=\"ap-footer\"><a href=\"https://github.com/zacharydf7/aspirin\">Source on GitHub</a></span>",
+      "_enableSearch": true,
+      "_disableContribution": true
+    }
+  }
+}

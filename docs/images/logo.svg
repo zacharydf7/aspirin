@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Aspirin">
+  <g transform="rotate(-35 32 32)">
+    <rect x="5" y="19" width="54" height="26" rx="13" fill="#f4f7fc" stroke="#133b7a" stroke-width="3" />
+    <path d="M18 19h14v26H18a13 13 0 0 1 0-26z" fill="#1683ff" stroke="#133b7a" stroke-width="3" />
+  </g>
+</svg>

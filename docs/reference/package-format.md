@@ -1,0 +1,133 @@
+# The package format
+
+A package is a folder. Nothing in it is compiled or compressed except the published projects themselves, so it
+can be inspected with a text editor.
+
+```text
+aspirin/
+  package.json
+  checksums.sha256
+  install.ps1
+  rollback.ps1
+  common.ps1
+  README.txt
+  resources/
+    <resource name>/
+      app/
+```
+
+Apart from the published files, the scripts read only `package.json` and `checksums.sha256`. Another build tool
+can produce a package by writing those two files and the `resources` folder next to the scripts.
+
+## package.json
+
+```json
+{
+  "schemaVersion": 1,
+  "application": "Sample.AppHost",
+  "environment": "Production",
+  "resources": [
+    {
+      "name": "worker",
+      "source": "resources/worker/app",
+      "version": "1.2.3+a8ae002eb25ab17369dd50a8d4c1eb777196eb98",
+      "windowsService": {
+        "serviceName": "AspirinSampleWorker",
+        "displayName": "Aspirin Sample Worker",
+        "description": "Sample worker installed from an Aspirin package.",
+        "executable": "Sample.Worker.exe",
+        "installPath": "C:\\Program Files\\AspirinSampleWorker",
+        "backupPath": "C:\\Program Files\\AspirinSampleWorker.backups",
+        "startMode": "delayedAutomatic",
+        "account": null
+      },
+      "settings": [
+        { "name": "Sample__Greeting", "value": "Hello from the build", "secret": false, "expression": null }
+      ]
+    }
+  ]
+}
+```
+
+Every property is always present. One with no value is `null`.
+
+| Property | Meaning |
+| --- | --- |
+| `schemaVersion` | The version of this format. The scripts refuse a file with any value but `1`. |
+| `application` | The name of the AppHost that built the package. |
+| `environment` | The environment the package was built for, from `--environment`. |
+| `resources` | The services, in the order they are installed. |
+
+### A resource
+
+| Property | Meaning |
+| --- | --- |
+| `name` | The resource's name in the AppHost. A settings file uses it as a key. |
+| `source` | The folder that holds the published files, relative to the package, with forward slashes. |
+| `version` | The product version of the published assembly, or `null`. Inside a git repository the .NET SDK adds the commit after a `+`. |
+| `windowsService` | How the service is installed. |
+| `settings` | The environment variables the service runs with. |
+
+### windowsService
+
+| Property | Meaning |
+| --- | --- |
+| `serviceName` | The name Windows knows the service by. |
+| `displayName` | The name shown in the Services console. |
+| `description` | The description shown in the Services console, or `null` to leave it as it is. |
+| `executable` | The program to run, relative to `source`. |
+| `installPath` | The folder on the server the files are copied to. |
+| `backupPath` | The folder on the server that holds backups of earlier installs. |
+| `startMode` | `automatic`, `delayedAutomatic` or `manual`. |
+| `account` | The account the service runs as, or `null` for LocalSystem. |
+
+### A setting
+
+| Property | Meaning |
+| --- | --- |
+| `name` | The environment variable's name. |
+| `value` | Its value, or `null` when it must be supplied at install time. |
+| `secret` | Whether the value is a secret. The installer doesn't act on it; it tells a reader why a value is missing. |
+| `expression` | For a value that only exists at run time, the Aspire expression it came from, such as `{api.bindings.http.url}`. |
+
+## checksums.sha256
+
+One line for every file in the package except `checksums.sha256` itself: the SHA-256 hash in lowercase
+hexadecimal, two spaces, and the file's path relative to the package with forward slashes. Lines are sorted by
+path.
+
+```text
+9cf5eeda0d7e83c1cb2653d5062db769914818ff1a0b9a46396deb76f616dd71  package.json
+d8ea1fbbaafdc9734420131c5d1f4624826e411bad3e51d3eb4fb95ab154f66f  resources/worker/app/Microsoft.CSharp.dll
+```
+
+It is the format `sha256sum` writes, so `sha256sum --check checksums.sha256` verifies a package on Linux.
+
+The installer fails a package that has a file the list doesn't name, lacks a file it does name, or holds a file
+whose hash differs.
+
+## On the server
+
+The installer leaves two things behind, besides the service itself.
+
+**The install folder** holds an exact copy of `source`.
+
+**The backup folder** holds one folder for each of the most recent install runs that changed the service, named
+with the UTC time the run started. Each one has an `app` folder with the files that were installed before the run,
+if there were any, and a `backup.json` with the service's earlier configuration:
+
+```json
+{
+  "serviceExisted": true,
+  "wasRunning": true,
+  "binaryPath": "\"C:\\Program Files\\AspirinSampleWorker\\Sample.Worker.exe\"",
+  "displayName": "Aspirin Sample Worker",
+  "description": "Sample worker installed from an Aspirin package.",
+  "startMode": "Auto",
+  "delayedAutoStart": true,
+  "account": "LocalSystem",
+  "environment": [ "Sample__Greeting=Hello from the build" ]
+}
+```
+
+For a service that didn't exist before the run, the file holds only `"serviceExisted": false`.

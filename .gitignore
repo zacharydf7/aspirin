@@ -8,3 +8,7 @@ aspire-output/
 CLAUDE.md
 CLAUDE.local.md
 .claude/
+
+docs/_site/
+docs/api/*
+!docs/api/index.md

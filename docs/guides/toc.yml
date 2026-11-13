@@ -1,0 +1,16 @@
+- name: Building packages
+  items:
+  - name: Settings and secrets
+    href: settings.md
+  - name: Building in a pipeline
+    href: pipelines.md
+  - name: Several services in one package
+    href: several-services.md
+- name: On the server
+  items:
+  - name: Installing a package
+    href: installing.md
+  - name: Rolling back
+    href: rolling-back.md
+  - name: Folder permissions
+    href: folder-permissions.md

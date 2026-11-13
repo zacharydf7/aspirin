@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Aspirin">
+  <defs>
+    <linearGradient id="sweep" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#14b886" />
+      <stop offset="1" stop-color="#22d39c" />
+    </linearGradient>
+    <linearGradient id="capsule-blue" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f9bff" />
+      <stop offset="1" stop-color="#0b63d6" />
+    </linearGradient>
+    <linearGradient id="capsule-white" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#d9e3f0" />
+    </linearGradient>
+    <linearGradient id="flap-left" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7cd2fb" />
+      <stop offset="1" stop-color="#4fb3f6" />
+    </linearGradient>
+    <linearGradient id="flap-right" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fdcff" />
+      <stop offset="1" stop-color="#5bbcf7" />
+    </linearGradient>
+    <clipPath id="capsule-shape">
+      <rect x="-74" y="-31" width="148" height="62" rx="31" />
+    </clipPath>
+  </defs>
+
+  <!-- The green arrow sweeps around behind the box and the capsule. -->
+  <path d="M84 206 C 22 190 12 120 70 90 C 110 70 176 60 214 58" fill="none" stroke="url(#sweep)" stroke-width="15"
+    stroke-linecap="round" />
+  <path d="M210 36 L 250 57 L 210 80 Z" fill="#22d39c" stroke="#22d39c" stroke-width="4" stroke-linejoin="round" />
+
+  <!-- The inside of the open box. -->
+  <path d="M58 132 L 128 108 L 198 132 L 128 156 Z" fill="#0a3f8f" />
+
+  <!-- The capsule, half Windows and half service. -->
+  <g transform="translate(132 104) rotate(-32)">
+    <g clip-path="url(#capsule-shape)">
+      <rect x="-74" y="-31" width="74" height="62" fill="url(#capsule-blue)" />
+      <rect x="0" y="-31" width="74" height="62" fill="url(#capsule-white)" />
+      <path d="M-62 -20 Q -40 -28 -14 -24" fill="none" stroke="#ffffff" stroke-opacity="0.45" stroke-width="5"
+        stroke-linecap="round" />
+    </g>
+    <rect x="-74" y="-31" width="148" height="62" rx="31" fill="none" stroke="#0b3a78" stroke-width="6" />
+    <line x1="0" y1="-31" x2="0" y2="31" stroke="#0b3a78" stroke-width="3" />
+
+    <g transform="translate(-36 1) rotate(32)" fill="#ffffff">
+      <rect x="-13" y="-13" width="12" height="12" rx="1" />
+      <rect x="1" y="-13" width="12" height="12" rx="1" />
+      <rect x="-13" y="1" width="12" height="12" rx="1" />
+      <rect x="1" y="1" width="12" height="12" rx="1" />
+    </g>
+
+    <g transform="translate(37 0) rotate(32)" fill="#0b3a78">
+      <circle r="12" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(45)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(90)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(135)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(180)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(225)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(270)" />
+      <rect x="-4" y="-19" width="8" height="9" rx="1.5" transform="rotate(315)" />
+      <circle r="5" fill="#eef3fa" />
+    </g>
+  </g>
+
+  <!-- The front of the box and its open flaps. -->
+  <path d="M58 132 L 128 156 L 128 236 L 58 210 Z" fill="#1e6fd6" />
+  <path d="M198 132 L 128 156 L 128 236 L 198 210 Z" fill="#1358b8" />
+  <path d="M58 132 L 128 156 L 110 176 L 30 150 Z" fill="url(#flap-left)" />
+  <path d="M198 132 L 128 156 L 146 176 L 226 150 Z" fill="url(#flap-right)" />
+  <path d="M128 156 L 110 176 L 128 184 L 146 176 Z" fill="#3f9df0" />
+
+  <!-- The arrow on the front of the box. -->
+  <path d="M128 182 L 150 204 L 138 204 L 138 226 L 118 226 L 118 204 L 106 204 Z" fill="#ffffff"
+    stroke="#ffffff" stroke-width="4" stroke-linejoin="round" />
+</svg>

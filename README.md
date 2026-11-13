@@ -1,3 +1,5 @@
+<img src="assets/logo.svg" alt="" width="96" align="right">
+
 # Aspirin
 
 Aspirin builds an installation package for Windows services from an Aspire AppHost. A build machine creates the

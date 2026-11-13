@@ -465,6 +465,15 @@ function Assert-IisReady {
     foreach ($site in $sites) {
         foreach ($binding in @($site.iisSite.bindings | Where-Object { $_.protocol -eq 'https' })) {
             Find-BindingCertificate $binding | Out-Null
+
+            # A certificate binding with another application ID belongs to a program other than IIS, which would
+            # start serving the site's certificate if the installer replaced it.
+            $endpoint = Get-SslEndpoint $binding
+            $current = Get-SslCertificateBinding $endpoint
+            if ($current -and $current.AppId -ne $script:IisAppId) {
+                throw ("A program other than IIS (application ID $($current.AppId)) has a certificate on $($endpoint.Endpoint), which the site " +
+                    "'$($site.iisSite.siteName)' needs for $(Format-Binding $binding). Use another port, or give the binding a host name if it has none.")
+            }
         }
     }
 

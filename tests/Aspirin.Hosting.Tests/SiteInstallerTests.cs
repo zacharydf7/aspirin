@@ -15,6 +15,10 @@ public sealed class SiteInstallerTests : IClassFixture<SiteInstallerTests.Certif
     private const int ExtraHttpsPort = 18444;
     private const string OtherSiteName = "Aspirin Other Site";
 
+    // The application ID IIS gives its certificate bindings, and one that stands for another program's.
+    private const string IisAppId = "{4dc3e181-e14b-4a21-b022-59fc669b0914}";
+    private const string OtherProgramAppId = "{0a7b3c55-7d2e-4f6a-9b1c-2e8d4f6a0b13}";
+
     private static readonly string s_appCmd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"System32\inetsrv\appcmd.exe");
 
     private readonly PublishedSitePackage _package;
@@ -103,6 +107,48 @@ public sealed class SiteInstallerTests : IClassFixture<SiteInstallerTests.Certif
             Assert.Contains($"{HttpPort}", site.Output);
             // HTTP.sys would otherwise keep the removed binding's certificate on the port, with no site using it.
             Assert.NotEqual(0, (await PublishedSample.RunAsync("netsh.exe", ["http", "show", "sslcert", $"ipport=0.0.0.0:{ExtraHttpsPort}"])).ExitCode);
+        }
+        finally
+        {
+            await RemoveSiteAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Install_ShouldKeepAnotherProgramsCertificate_WhenRemovingABindingAddedByHand()
+    {
+        Assert.SkipUnless(CanInstall(), "Installing an IIS site needs an elevated session, IIS and the ASP.NET Core Module.");
+        try
+        {
+            var first = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1");
+            Assert.True(first.ExitCode == 0, first.Output);
+            await AddHttpsBindingWithoutSniAsync(ExtraHttpsPort, OtherProgramAppId);
+
+            var second = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1");
+
+            Assert.True(second.ExitCode == 0, second.Output);
+            Assert.DoesNotContain($"{ExtraHttpsPort}", (await PublishedSample.RunAsync(s_appCmd, ["list", "site", SiteName])).Output);
+            Assert.Equal(0, (await PublishedSample.RunAsync("netsh.exe", ["http", "show", "sslcert", $"ipport=0.0.0.0:{ExtraHttpsPort}"])).ExitCode);
+        }
+        finally
+        {
+            await RemoveSiteAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Install_ShouldFailBeforeChangingAnything_WhenAnotherProgramHasTheCertificateEndpoint()
+    {
+        Assert.SkipUnless(CanInstall(), "Installing an IIS site needs an elevated session, IIS and the ASP.NET Core Module.");
+        try
+        {
+            await AddCertificateBindingAsync($"hostnameport={HostName}:{HttpsPort}", OtherProgramAppId);
+
+            var result = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1");
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains($"A program other than IIS (application ID {OtherProgramAppId}) has a certificate on {HostName}:{HttpsPort}", result.Output);
+            Assert.Contains("Nothing was changed.", result.Output);
         }
         finally
         {
@@ -224,12 +270,17 @@ public sealed class SiteInstallerTests : IClassFixture<SiteInstallerTests.Certif
 
     // A binding of the kind an administrator might add by hand: HTTPS on an address and port, with no host name, so its
     // certificate belongs to the port.
-    private static async Task AddHttpsBindingWithoutSniAsync(int port)
+    private static async Task AddHttpsBindingWithoutSniAsync(int port, string appId = IisAppId)
     {
         await PublishedSample.RunAsync(s_appCmd,
             ["set", "site", $"/site.name:{SiteName}", $"/+bindings.[protocol='https',bindingInformation='*:{port}:']"]);
+        await AddCertificateBindingAsync($"ipport=0.0.0.0:{port}", appId);
+    }
+
+    private static async Task AddCertificateBindingAsync(string endpoint, string appId)
+    {
         var added = await PublishedSample.RunAsync("netsh.exe",
-            ["http", "add", "sslcert", $"ipport=0.0.0.0:{port}", $"certhash={await Certificate.ThumbprintAsync()}", "appid={4dc3e181-e14b-4a21-b022-59fc669b0914}"]);
+            ["http", "add", "sslcert", endpoint, $"certhash={await Certificate.ThumbprintAsync()}", $"appid={appId}"]);
         Assert.True(added.ExitCode == 0, added.Output);
     }
 

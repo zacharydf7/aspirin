@@ -91,8 +91,20 @@ Settings become the application pool's environment variables. They're kept in II
 administrators and the pool itself can read, rather than in `web.config`, so the installed files stay exactly the
 ones in the package.
 
-The settings Aspire derives from the project's own endpoints, such as `HTTP_PORTS` and `ASPNETCORE_URLS`, are left
-out. IIS decides where the site listens, from its bindings.
+Two kinds of setting Aspire gives a project are left out, because IIS takes care of them:
+
+- **Addresses** Aspire derives from the project's own endpoints, such as `HTTP_PORTS` and `ASPNETCORE_URLS`. IIS
+  decides where the site listens, from its bindings.
+- **`ASPNETCORE_FORWARDEDHEADERS_ENABLED`**, which Aspire sets for apps that run behind a proxy. IIS already passes
+  the app the client's real address and scheme. With the setting on, the app would also trust the
+  `X-Forwarded-For` and `X-Forwarded-Proto` headers from any client, which lets a visitor fake both. If the AppHost
+  sets it with `WithEnvironment`, that value is kept.
+
+If a load balancer or reverse proxy sits in front of IIS, the app does need forwarded headers: IIS then sees the
+proxy's address, and also its scheme if it ends TLS. Configure `ForwardedHeadersOptions` in the app with the proxy's
+address in `KnownProxies` or `KnownIPNetworks`, so it trusts only that proxy. Setting
+`ASPNETCORE_FORWARDEDHEADERS_ENABLED` in the AppHost also works, but then the app trusts forwarded headers from every
+client again.
 
 ## The pool's account
 

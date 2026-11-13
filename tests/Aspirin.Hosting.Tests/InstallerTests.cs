@@ -172,9 +172,10 @@ public sealed class InstallerTests : IAsyncDisposable
         var result = await RunFunctionsAsync($"New-ProtectedDirectory '{folder}'; Grant-DirectoryRead '{folder}' '{account}'");
 
         Assert.True(result.ExitCode == 0, result.Output);
+        // Assert.Contains would cut the listing short in its failure message, and the listing is what explains a failure.
         var permissions = (await PublishedPackage.RunAsync("icacls.exe", [folder])).Output;
-        Assert.Contains($"{account}:(OI)(CI)(RX)", permissions, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains(@"NT AUTHORITY\SYSTEM:(OI)(CI)(F)", permissions);
+        Assert.True(permissions.Contains($"{account}:(OI)(CI)(RX)", StringComparison.OrdinalIgnoreCase), permissions);
+        Assert.True(permissions.Contains(@"NT AUTHORITY\SYSTEM:(OI)(CI)(F)", StringComparison.Ordinal), permissions);
     }
 
     [Fact]

@@ -287,8 +287,9 @@ public static int Try(string user, string domain, string password, int logonType
     }
 }
 
-# Returns the SIDs that hold a user right, such as SeBatchLogonRight. They're read from Windows itself, which holds
-# the rights domain Group Policy sets as well as local ones; secedit's export can leave the rights out.
+# Returns the SIDs that hold a user right, such as SeBatchLogonRight. They're read from the local security authority
+# (LSA), which holds the rights that domain Group Policy sets as well as local ones; secedit's export can leave the
+# rights out entirely.
 function Get-UserRightHolders {
     param([string]$Right)
 
@@ -352,7 +353,7 @@ public static string[] Holders(string right)
         IntPtr buffer;
         uint count;
         status = LsaEnumerateAccountsWithUserRight(policy, ref name, out buffer, out count);
-        // No account holding the right is reported as the end of an empty list.
+        // When no account holds the right, LSA returns STATUS_NO_MORE_ENTRIES instead of an empty list.
         if (status == StatusNoMoreEntries)
         {
             return new string[0];
@@ -385,7 +386,12 @@ public static string[] Holders(string right)
 '@
     }
 
-    return @([Aspirin.UserRights]::Holders($Right))
+    try {
+        return @([Aspirin.UserRights]::Holders($Right))
+    }
+    catch {
+        throw "Reading which accounts hold the '$Right' right failed: $($_.Exception.InnerException.Message)"
+    }
 }
 
 # Lets the account read and run what is in the folder, on top of the permissions the folder already has.

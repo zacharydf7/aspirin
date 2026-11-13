@@ -10,8 +10,8 @@ public sealed class IisSiteOptions : PackagedProjectOptions
     public string? SiteName { get; set; }
 
     /// <summary>
-    /// The application pool the site runs in. Defaults to <see cref="SiteName"/>. The installer creates it, and no
-    /// other site in the package may use it.
+    /// The application pool the site runs in. Defaults to <see cref="SiteName"/>. The installer creates it and replaces
+    /// its settings and account on every install, so no other site may use it, in the package or on the server.
     /// </summary>
     public string? AppPoolName { get; set; }
 
@@ -36,7 +36,8 @@ public sealed class IisSiteOptions : PackagedProjectOptions
 
     /// <summary>
     /// A path the installer requests after starting the site, such as <c>/health</c>. The install fails unless it
-    /// answers with a success status within 30 seconds. Leave it unset to only check that the site is running.
+    /// answers with a success status within 30 seconds. Without it, the installer requests <c>/</c> and accepts any
+    /// status below 500, which shows the app started.
     /// </summary>
     public string? HealthCheckPath { get; set; }
 }

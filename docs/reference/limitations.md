@@ -25,12 +25,11 @@ about before you rely on it. The ones that are planned work are tracked on
 
 ## IIS sites
 
-- **The pool account's password isn't checked before the first change**, as for services.
+- **The pool account's password isn't checked before the first change.** As with a service, a wrong password is found
+  when the site starts, after its files were replaced.
 - **The "Log on as a batch job" right isn't checked.** IIS normally gives it to pool accounts through the
   `IIS_IUSRS` group, but a policy can take it away.
-- **The health check over HTTPS needs the host name to resolve to the server**, and the certificate to be trusted
-  there. A site with an HTTP binding is checked over HTTP instead.
-- **Windows features aren't installed.** IIS, the ASP.NET Core Module and Application Initialization must already
+- **Nothing the sites need is installed.** IIS, the ASP.NET Core Module and Application Initialization must already
   be on the server.
 
 ## Secrets

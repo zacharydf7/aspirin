@@ -6,8 +6,8 @@
     install.ps1 takes a backup of each service and site before changing it. This script finds the most recent install
     run and restores the backup it took of each one. For a service that is the files, binary path, display name,
     description, start mode and environment. For an IIS site it is the files, the site and its application pool as
-    IIS had them, and the certificates of its HTTPS bindings. A service, site or pool that did not exist before that
-    run is removed. A service or site the run did not reach is left alone.
+    IIS had them, and which certificate each of its HTTPS bindings used. A service, site or pool that did not exist
+    before that run is removed. A service or site the run did not reach is left alone.
 
     A service's account is not restored, because its password is not kept. If the install changed it, set it back
     in the Services console. An application pool's account is restored with the rest of the pool.
@@ -204,7 +204,7 @@ try {
     }
 
     if (@($manifest.resources | Where-Object { $_.kind -eq 'iisSite' }).Count -gt 0) {
-        Write-Host "The install also backed up the whole IIS configuration as 'aspirin-$runId'. If IIS still isn't right, an administrator can restore it with: appcmd restore backup aspirin-$runId"
+        Write-Host "The install also backed up the whole IIS configuration as 'aspirin-$runId'. If IIS still isn't right, an administrator can restore it, which also undoes every other IIS change made since: & '$script:AppCmd' restore backup aspirin-$runId"
     }
 
     Write-Host 'Rollback complete.' -ForegroundColor Green

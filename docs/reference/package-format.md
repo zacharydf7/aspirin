@@ -117,7 +117,7 @@ Version 1 had no `kind`, and kept `installPath` and `backupPath` inside `windows
 
 A binding has a `protocol` (`http` or `https`), an `ipAddress` (`*` for every address), a `port` and a `hostName`
 (`null` for any host name). An HTTPS binding names its certificate by `certificateSubject` or by
-`certificateThumbprint`, in uppercase, and says which local machine store holds it in `certificateStore`. `sni` is
+`certificateThumbprint` (in uppercase), and `certificateStore` says which local machine store holds it. `sni` is
 `true` for an HTTPS binding with a host name.
 
 ### A setting

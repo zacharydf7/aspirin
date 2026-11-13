@@ -15,7 +15,8 @@ internal static class PackageScripts
     // Runs a command with the functions the scripts share, without running either script.
     public static Task<(int ExitCode, string Output)> RunFunctionsAsync(string packageRoot, string command) =>
         PublishedSample.RunAsync("powershell.exe",
-            ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", $". '{Path.Combine(packageRoot, "common.ps1")}'; {command}"]);
+            ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command",
+                $". '{Path.Combine(packageRoot, "common.ps1")}'; . '{Path.Combine(packageRoot, "iis.ps1")}'; {command}"]);
 
     [SupportedOSPlatformGuard("windows")]
     public static bool IsElevated() =>

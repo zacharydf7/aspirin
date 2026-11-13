@@ -32,55 +32,47 @@ public static partial class IisSiteExtensions
         options.AppPoolName ??= options.SiteName;
         options.BackupPath = PackagedProject.BackupPathFor(installPath, options);
         PackagedProject.ValidatePaths(installPath, options.BackupPath, @"C:\inetpub\Contoso\Web");
-        Validate(installPath, options);
+        Validate(options, nameof(configure));
 
         return PackagedProject.Annotate(builder, new IisSiteAnnotation(installPath, options));
     }
 
-    private static void Validate(string installPath, IisSiteOptions options)
+    private static void Validate(IisSiteOptions options, string parameterName)
     {
-        // The installer passes these to appcmd.exe inside single quotes.
-        foreach (var path in new[] { installPath, options.BackupPath! })
-        {
-            if (path.AsSpan().ContainsAny('\'', '"'))
-            {
-                throw new ArgumentException($"The path '{path}' can't contain quotes.", nameof(installPath));
-            }
-        }
 
         foreach (var (kind, name) in new[] { ("site", options.SiteName!), ("application pool", options.AppPoolName!) })
         {
             if (!NamePattern().IsMatch(name))
             {
                 throw new ArgumentException(
-                    $"The {kind} name '{name}' must be 1 to 64 letters, digits, spaces, dots, hyphens or underscores.", nameof(options));
+                    $"The {kind} name '{name}' must be 1 to 64 letters, digits, spaces, dots, hyphens or underscores.", parameterName);
             }
         }
 
         if (options.Bindings.Count == 0)
         {
             throw new ArgumentException(
-                $"The site '{options.SiteName}' needs at least one binding, such as {nameof(IisBinding)}.{nameof(IisBinding.Http)}(80).", nameof(options));
+                $"The site '{options.SiteName}' needs at least one binding, such as {nameof(IisBinding)}.{nameof(IisBinding.Http)}(80).", parameterName);
         }
 
         foreach (var binding in options.Bindings)
         {
-            ValidateBinding(options.SiteName!, binding);
+            ValidateBinding(options.SiteName!, binding, parameterName);
         }
 
         var duplicate = options.Bindings.GroupBy(BindingKey).FirstOrDefault(group => group.Count() > 1);
         if (duplicate is not null)
         {
-            throw new ArgumentException($"The site '{options.SiteName}' has the binding {Describe(duplicate.First())} more than once.", nameof(options));
+            throw new ArgumentException($"The site '{options.SiteName}' has the binding {Describe(duplicate.First())} more than once.", parameterName);
         }
 
         if (options.HealthCheckPath is { } healthCheckPath && !healthCheckPath.StartsWith('/'))
         {
-            throw new ArgumentException($"The health check path '{healthCheckPath}' must start with a slash, such as /health.", nameof(options));
+            throw new ArgumentException($"The health check path '{healthCheckPath}' must start with a slash, such as /health.", parameterName);
         }
     }
 
-    private static void ValidateBinding(string siteName, IisBinding binding)
+    private static void ValidateBinding(string siteName, IisBinding binding, string parameterName)
     {
         var problem = binding switch
         {
@@ -93,8 +85,7 @@ public static partial class IisSiteExtensions
                 "gives both a certificate subject and a thumbprint; give one",
             { CertificateThumbprint: { } thumbprint } when !ThumbprintPattern().IsMatch(thumbprint) =>
                 "has a certificate thumbprint that isn't 40 hexadecimal characters",
-            { CertificateSubject: { } subject } when string.IsNullOrWhiteSpace(subject) || subject.AsSpan().ContainsAny('\'', '"') =>
-                "has a certificate subject that is empty or contains quotes",
+            { CertificateSubject: { } subject } when string.IsNullOrWhiteSpace(subject) => "has an empty certificate subject",
             { Protocol: IisBindingProtocol.Https } when binding.CertificateStore is not ("My" or "WebHosting") =>
                 "names a certificate store other than My or WebHosting",
             _ => null,
@@ -102,7 +93,7 @@ public static partial class IisSiteExtensions
 
         if (problem is not null)
         {
-            throw new ArgumentException($"The binding {Describe(binding)} of the site '{siteName}' {problem}.", "options");
+            throw new ArgumentException($"The binding {Describe(binding)} of the site '{siteName}' {problem}.", parameterName);
         }
     }
 
@@ -116,7 +107,8 @@ public static partial class IisSiteExtensions
         (binding.IpAddress, binding.Port, (binding.HostName ?? "").ToLowerInvariant());
 
     internal static string Describe(IisBinding binding) =>
-        $"{binding.Protocol.ToString().ToLowerInvariant()}://{binding.HostName ?? "*"}:{binding.Port} on {binding.IpAddress}";
+        $"{binding.Protocol.ToString().ToLowerInvariant()}://{binding.HostName ?? "*"}:{binding.Port}" +
+        (binding.IpAddress == "*" ? "" : $" on {binding.IpAddress}");
 
     [GeneratedRegex(@"^[A-Za-z0-9 ._-]{1,64}$")]
     private static partial Regex NamePattern();

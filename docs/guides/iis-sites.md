@@ -36,7 +36,7 @@ The installer owns the site and its application pool. On every install it makes 
 | Option | Default | What it sets |
 | --- | --- | --- |
 | `SiteName` | The resource name | The site's name in IIS Manager. |
-| `AppPoolName` | `SiteName` | The application pool the site runs in. No other site in the package may use it. |
+| `AppPoolName` | `SiteName` | The application pool the site runs in. No other site may use it, in the package or on the server. |
 | `Bindings` | None; at least one is required | The addresses the site answers on. |
 | `Account` | The pool's own identity | The account the pool runs as. |
 | `AlwaysRunning` | Off | Starts the site with IIS and keeps it running without waiting for a request, for a site that does background work. |
@@ -58,11 +58,12 @@ site.Bindings.Add(IisBinding.Http(80, "web.contoso.local") with { IpAddress = "1
 ```
 
 The site's HTTP and HTTPS bindings are made to match the list on every install. A binding someone added in IIS
-Manager is removed, and `install.ps1 -WhatIf`, run as an administrator, lists it first. Bindings for other
+Manager is removed. Run `install.ps1 -WhatIf` as an administrator to see which ones would go. Bindings for other
 protocols, such as `net.tcp`, are left alone.
 
 Two sites in one package can't answer on the same address, port and host name, and publishing fails if they do.
-The installer also stops if a site that isn't in the package already answers there.
+The installer also stops if a site that isn't in the package already answers there, or uses the site's application
+pool: the installer replaces the pool's settings and account, which would change that site too.
 
 ## HTTPS certificates
 
@@ -73,8 +74,8 @@ IisBinding.Https(443, "web.contoso.local", certificateSubject: "CN=web.contoso.l
 IisBinding.Https(443, "web.contoso.local", certificateThumbprint: "8A1F...")
 ```
 
-By subject, the installer picks the newest certificate with that subject that has a private key and is valid that
-day. When the certificate is renewed, the next install uses the new one, with no new package needed. By thumbprint,
+By subject, the installer picks the newest certificate with that subject that has a private key and is valid at the
+time of the install. When the certificate is renewed, the next install uses the new one, with no new package needed. By thumbprint,
 it uses exactly that certificate.
 
 The certificate is looked for in the `My` (Personal) store. Set `CertificateStore = "WebHosting"` with a `with`
@@ -106,8 +107,8 @@ The account gets read access to the install folder.
 
 For each site:
 
-1. **Backs up** the installed files, the site and its pool as IIS has them, and the certificates of its HTTPS
-   bindings.
+1. **Backs up** the installed files, the site and its pool as IIS has them, and which certificate each HTTPS
+   binding uses.
 2. If the site exists, **shows an "updating" page**: it writes `app_offline.htm` into the site, which makes the
    ASP.NET Core Module stop the app and show the page to visitors.
 3. **Replaces** the installed files with the ones in the package.
@@ -117,7 +118,9 @@ For each site:
 6. **Gives the pool's account** read access to the install folder.
 7. **Removes the "updating" page and starts the site.**
 8. **Checks the site answers.** With `HealthCheckPath`, it asks for that path and expects a success status within
-   30 seconds. Without it, it asks for `/` and accepts any status below 500, which shows the app started.
+   30 seconds. Without it, it asks for `/` and accepts any status below 500, which shows the app started. The request
+   goes to the server's own address with the site's host name, over HTTPS when the site has an HTTPS binding, so it
+   needs no DNS entry and isn't redirected by an app that sends HTTP visitors to HTTPS.
 
 Before the first site, it also backs up the whole IIS configuration, under a name like `aspirin-20261113-014500-123`,
 for an administrator to restore by hand if a rollback isn't enough.

@@ -12,6 +12,8 @@ public sealed class SiteInstallerTests : IClassFixture<SiteInstallerTests.Certif
     private const string HostName = "aspirin-sample.test";
     private const int HttpPort = 18091;
     private const int HttpsPort = 18443;
+    private const int ExtraHttpsPort = 18444;
+    private const string OtherSiteName = "Aspirin Other Site";
 
     private static readonly string s_appCmd = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"System32\inetsrv\appcmd.exe");
 
@@ -89,21 +91,146 @@ public sealed class SiteInstallerTests : IClassFixture<SiteInstallerTests.Certif
         {
             var first = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1");
             Assert.True(first.ExitCode == 0, first.Output);
-            await PublishedSample.RunAsync(s_appCmd, ["set", "site", $"/site.name:{SiteName}", "/+bindings.[protocol='http',bindingInformation='*:18092:']"]);
+            await AddHttpsBindingWithoutSniAsync(ExtraHttpsPort);
 
             var plan = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1", "-WhatIf");
             var second = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1");
 
-            Assert.Contains("Remove:      the binding http *:18092:", plan.Output);
+            Assert.Contains($"Remove:      the binding https *:{ExtraHttpsPort}:", plan.Output);
             Assert.True(second.ExitCode == 0, second.Output);
             var site = await PublishedSample.RunAsync(s_appCmd, ["list", "site", SiteName]);
-            Assert.DoesNotContain("18092", site.Output);
+            Assert.DoesNotContain($"{ExtraHttpsPort}", site.Output);
             Assert.Contains($"{HttpPort}", site.Output);
+            // HTTP.sys would otherwise keep the removed binding's certificate on the port, with no site using it.
+            Assert.NotEqual(0, (await PublishedSample.RunAsync("netsh.exe", ["http", "show", "sslcert", $"ipport=0.0.0.0:{ExtraHttpsPort}"])).ExitCode);
         }
         finally
         {
             await RemoveSiteAsync();
         }
+    }
+
+    [Fact]
+    public async Task TestSiteHealth_ShouldAcceptTheBoundCertificate_WhenHttpsBindingHasNoHostName()
+    {
+        Assert.SkipUnless(CanInstall(), "Installing an IIS site needs an elevated session, IIS and the ASP.NET Core Module.");
+        try
+        {
+            var install = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1");
+            Assert.True(install.ExitCode == 0, install.Output);
+            await AddHttpsBindingWithoutSniAsync(ExtraHttpsPort);
+
+            // Without a host name, the request goes to an address, which the certificate doesn't name.
+            var result = await PackageScripts.RunFunctionsAsync(_package.Root, $$"""
+                Test-SiteHealth ([pscustomobject]@{ siteName = '{{SiteName}}'; healthCheckPath = '/health'; bindings = @(
+                    [pscustomobject]@{ protocol = 'https'; ipAddress = '*'; port = {{ExtraHttpsPort}}; hostName = $null; sni = $false;
+                        certificateSubject = 'CN={{HostName}}'; certificateThumbprint = $null; certificateStore = 'My' }) })
+                """);
+
+            Assert.True(result.ExitCode == 0, result.Output);
+        }
+        finally
+        {
+            await RemoveSiteAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Install_ShouldFailBeforeChangingAnything_WhenAnotherSiteUsesThePool()
+    {
+        Assert.SkipUnless(CanInstall(), "Installing an IIS site needs an elevated session, IIS and the ASP.NET Core Module.");
+        try
+        {
+            await PublishedSample.RunAsync(s_appCmd, ["add", "apppool", $"/name:{SiteName}"]);
+            await PublishedSample.RunAsync(s_appCmd, ["add", "site", $"/name:{OtherSiteName}", @"/physicalPath:C:\inetpub\wwwroot", "/bindings:http/*:18095:"]);
+            await PublishedSample.RunAsync(s_appCmd, ["set", "app", $"{OtherSiteName}/", $"/applicationPool:{SiteName}"]);
+
+            var result = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1");
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains($"The application pool '{SiteName}' also runs '{OtherSiteName}/'", result.Output);
+            Assert.Contains("Nothing was changed.", result.Output);
+        }
+        finally
+        {
+            await RemoveSiteAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Install_ShouldFailBeforeChangingAnything_WhenAnotherSiteAnswersOnTheSameAddress()
+    {
+        Assert.SkipUnless(CanInstall(), "Installing an IIS site needs an elevated session, IIS and the ASP.NET Core Module.");
+        try
+        {
+            await PublishedSample.RunAsync(s_appCmd,
+                ["add", "site", $"/name:{OtherSiteName}", @"/physicalPath:C:\inetpub\wwwroot", $"/bindings:http/*:{HttpPort}:{HostName}"]);
+
+            var result = await PackageScripts.RunScriptAsync(_package.Root, "install.ps1");
+
+            Assert.Equal(1, result.ExitCode);
+            Assert.Contains($"The site '{OtherSiteName}' already answers on http://{HostName}:{HttpPort}", result.Output);
+            Assert.Contains("Nothing was changed.", result.Output);
+        }
+        finally
+        {
+            await RemoveSiteAsync();
+        }
+    }
+
+    [Fact]
+    public async Task SetIisAppPool_ShouldKeepThePassword_WhenUpdatingAUserAccountPoolWithoutCredential()
+    {
+        Assert.SkipUnless(CanInstall(), "Changing IIS needs an elevated session, IIS and the ASP.NET Core Module.");
+        try
+        {
+            // IIS doesn't check the account when the pool is configured, so the account needn't exist.
+            var result = await PackageScripts.RunFunctionsAsync(_package.Root, $$"""
+                $definition = [pscustomobject]@{ appPoolName = '{{SiteName}}'; account = '.\aspirin-test'; alwaysRunning = $false }
+                $credential = New-Object PSCredential('.\aspirin-test', (ConvertTo-SecureString 'Not-a-real-1' -AsPlainText -Force))
+                Set-IisAppPool $definition @() $credential '{{_workFolder}}'
+                Set-IisAppPool $definition @() $null '{{_workFolder}}'
+                Invoke-AppCmd list apppool '{{SiteName}}' /text:processModel.password
+                """);
+
+            Assert.True(result.ExitCode == 0, result.Output);
+            Assert.Equal("Not-a-real-1", result.Output.Trim());
+        }
+        finally
+        {
+            await RemoveSiteAsync();
+        }
+    }
+
+    [Fact]
+    public async Task SetIisAppPool_ShouldStartThePoolWithIisAndNeverIdle_WhenAlwaysRunning()
+    {
+        Assert.SkipUnless(CanInstall(), "Changing IIS needs an elevated session, IIS and the ASP.NET Core Module.");
+        try
+        {
+            var result = await PackageScripts.RunFunctionsAsync(_package.Root,
+                $"Set-IisAppPool ([pscustomobject]@{{ appPoolName = '{SiteName}'; account = $null; alwaysRunning = $true }}) @() $null '{_workFolder}'");
+
+            Assert.True(result.ExitCode == 0, result.Output);
+            var pool = await PublishedSample.RunAsync(s_appCmd, ["list", "apppool", SiteName, "/config"]);
+            Assert.Contains("startMode=\"AlwaysRunning\"", pool.Output);
+            Assert.Contains("idleTimeout=\"00:00:00\"", pool.Output);
+        }
+        finally
+        {
+            await RemoveSiteAsync();
+        }
+    }
+
+    // A binding of the kind an administrator might add by hand: HTTPS on an address and port, with no host name, so its
+    // certificate belongs to the port.
+    private static async Task AddHttpsBindingWithoutSniAsync(int port)
+    {
+        await PublishedSample.RunAsync(s_appCmd,
+            ["set", "site", $"/site.name:{SiteName}", $"/+bindings.[protocol='https',bindingInformation='*:{port}:']"]);
+        var added = await PublishedSample.RunAsync("netsh.exe",
+            ["http", "add", "sslcert", $"ipport=0.0.0.0:{port}", $"certhash={await Certificate.ThumbprintAsync()}", "appid={4dc3e181-e14b-4a21-b022-59fc669b0914}"]);
+        Assert.True(added.ExitCode == 0, added.Output);
     }
 
     [Fact]
@@ -193,8 +320,10 @@ public sealed class SiteInstallerTests : IClassFixture<SiteInstallerTests.Certif
     private static async Task RemoveSiteAsync()
     {
         await PublishedSample.RunAsync(s_appCmd, ["delete", "site", SiteName]);
+        await PublishedSample.RunAsync(s_appCmd, ["delete", "site", OtherSiteName]);
         await PublishedSample.RunAsync(s_appCmd, ["delete", "apppool", SiteName]);
         await PublishedSample.RunAsync("netsh.exe", ["http", "delete", "sslcert", $"hostnameport={HostName}:{HttpsPort}"]);
+        await PublishedSample.RunAsync("netsh.exe", ["http", "delete", "sslcert", $"ipport=0.0.0.0:{ExtraHttpsPort}"]);
 
         // The installer backs up the whole IIS configuration on each run; these tests made the ones named after Aspirin.
         var backups = await PublishedSample.RunAsync(s_appCmd, ["list", "backup"]);
@@ -247,13 +376,17 @@ public sealed class SiteInstallerTests : IClassFixture<SiteInstallerTests.Certif
         public static Task RemoveAsync() => RunPowerShellAsync(
             $"Get-ChildItem Cert:\\LocalMachine\\My | Where-Object Subject -eq 'CN={HostName}' | Remove-Item");
 
+        public static async Task<string> ThumbprintAsync() => (await RunPowerShellAsync(
+            $"(Get-ChildItem Cert:\\LocalMachine\\My | Where-Object Subject -eq 'CN={HostName}' | Select-Object -First 1).Thumbprint")).Trim();
+
         // Started from a process that inherits PowerShell 7's module path, Windows PowerShell can't find its own modules,
         // which provide the Cert: drive and New-SelfSignedCertificate, until they are put back on the path.
-        private static async Task RunPowerShellAsync(string command)
+        private static async Task<string> RunPowerShellAsync(string command)
         {
             var result = await PublishedSample.RunAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
                 $"$env:PSModulePath = \"$PSHOME\\Modules;$env:PSModulePath\"; Import-Module Microsoft.PowerShell.Security, PKI; {command}"]);
             Assert.True(result.ExitCode == 0, result.Output);
+            return result.Output;
         }
     }
 }

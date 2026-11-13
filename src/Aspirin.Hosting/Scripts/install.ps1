@@ -351,8 +351,10 @@ function New-SiteBackup {
         Export-IisObject 'apppool' $definition.appPoolName (Join-Path $folder 'apppool.xml')
     }
 
-    foreach ($binding in @($definition.bindings | Where-Object { $_.protocol -eq 'https' })) {
-        $endpoint = Get-SslEndpoint $binding
+    # The endpoints the package's HTTPS bindings use, and those of the site's HTTPS bindings the install may remove.
+    $endpoints = @($definition.bindings | Where-Object { $_.protocol -eq 'https' } | ForEach-Object { Get-SslEndpoint $_ }) +
+        @(Get-SiteBindings $Site | Where-Object { $_.Protocol -eq 'https' } | ForEach-Object { Get-ListedBindingEndpoint $_ })
+    foreach ($endpoint in $endpoints | Sort-Object Endpoint -Unique) {
         $current = Get-SslCertificateBinding $endpoint
         $entry = [ordered]@{ kind = $endpoint.Kind; endpoint = $endpoint.Endpoint; existed = [bool]$current }
         if ($current) {

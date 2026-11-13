@@ -48,16 +48,6 @@ public class IisSiteExtensionsTests
     }
 
     [Theory]
-    [InlineData(@"C:\inetpub\Bob's Web")]
-    [InlineData(@"C:\inetpub\""Web""")]
-    public void PublishAsIisSite_ShouldThrow_WhenGivenInstallPathWithQuotes(string installPath)
-    {
-        var project = AddProject();
-
-        Assert.Throws<ArgumentException>(() => project.PublishAsIisSite(installPath, WithBinding(IisBinding.Http(80))));
-    }
-
-    [Theory]
     [InlineData("Web/Admin")]
     [InlineData("Web's")]
     [InlineData("")]

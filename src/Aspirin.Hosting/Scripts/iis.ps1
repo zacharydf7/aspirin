@@ -143,8 +143,8 @@ function Get-PoolUserName {
     }
 }
 
-# Creates or replaces the pool. IIS keeps settings this doesn't manage, such as recycling, because the new pool
-# starts from the old one's configuration.
+# Creates or replaces the pool. Settings this doesn't manage, such as recycling, are kept, because the new pool starts
+# from the old one's configuration.
 function Set-IisAppPool {
     param($Definition, [string[]]$Environment, [pscredential]$Credential, [string]$WorkFolder)
 
@@ -296,6 +296,27 @@ function Sync-SiteBindings {
     foreach ($binding in $changes.Add) {
         Invoke-AppCmd set site "/site.name:$name" "/+bindings.[protocol='$($binding.Protocol)',bindingInformation='$($binding.Information)',sslFlags='$($binding.SslFlags)']" | Out-Null
     }
+
+    # HTTP.sys keeps the certificate of a removed HTTPS binding until it's removed too, unless another site's binding
+    # still uses it.
+    $removed = @($changes.Remove | Where-Object { $_.Protocol -eq 'https' } | ForEach-Object { Get-ListedBindingEndpoint $_ })
+    if ($removed.Count -gt 0) {
+        $inUse = @(Get-IisObjects 'site' | ForEach-Object { Get-SiteBindings $_ } | Where-Object { $_.Protocol -eq 'https' } |
+            ForEach-Object { (Get-ListedBindingEndpoint $_).Endpoint })
+        foreach ($endpoint in $removed | Where-Object { $inUse -notcontains $_.Endpoint }) {
+            Remove-SslCertificateBinding $endpoint
+        }
+    }
+}
+
+# The HTTP.sys endpoint of an HTTPS binding as Get-SiteBindings lists it.
+function Get-ListedBindingEndpoint {
+    param($Listed)
+
+    $parts = Split-BindingInformation $Listed.Information
+    return Get-SslEndpoint ([pscustomobject]@{
+        ipAddress = $parts.Address; port = $parts.Port; hostName = $parts.HostName; sni = ($Listed.SslFlags -band 1) -eq 1
+    })
 }
 
 function Format-Binding {
@@ -461,9 +482,21 @@ function Assert-IisReady {
 
                     # Without SNI, HTTP.sys has one certificate per address and port, shared by every site there.
                     if ($binding.protocol -eq 'https' -and -not $binding.sni -and $existing.Protocol -eq 'https' -and ($existing.SslFlags -band 1) -eq 0) {
-                        throw "The site '$otherName' has an HTTPS binding on port $($binding.port) without SNI, so it shares the certificate the site '$($site.iisSite.siteName)' would change. Give the binding a host name, which uses SNI."
+                        throw "The site '$otherName' has an HTTPS binding on port $($binding.port) without SNI, so it shares the certificate the site '$($site.iisSite.siteName)' would change. Give the HTTPS binding of '$($site.iisSite.siteName)' a host name in the AppHost, so it uses SNI."
                     }
                 }
+            }
+        }
+    }
+
+    # The installer replaces a pool's settings and account, which would change every application in it.
+    $apps = @(Get-AppCmdXml @('list', 'app', '/xml') 'APP')
+    foreach ($site in $sites) {
+        $pool = $site.iisSite.appPoolName
+        foreach ($app in $apps | Where-Object { $_.GetAttribute('APPPOOL.NAME') -eq $pool }) {
+            $appName = $app.GetAttribute('APP.NAME')
+            if ($ours -notcontains $appName.Split('/')[0]) {
+                throw "The application pool '$pool' also runs '$appName', which isn't in the package. Give the site '$($site.iisSite.siteName)' a pool of its own."
             }
         }
     }
@@ -471,10 +504,15 @@ function Assert-IisReady {
 
 # Asks the site for its health check path, or for / when it has none, until it answers or 30 seconds pass. With a
 # health check path the answer must be a success status; without one, any status below 500 shows the app started.
+#
+# The request goes to the server's own address and names the site's host in the Host header, so it needs no DNS
+# entry. It uses an HTTPS binding when the site has one, because an app that redirects HTTP to HTTPS would answer an
+# HTTP request with a redirect. It accepts the certificate the installer bound and no other: the request never leaves
+# the server, and the name in its URL is an address, which no certificate names.
 function Test-SiteHealth {
     param($Definition)
 
-    $binding = @($Definition.bindings | Where-Object { $_.protocol -eq 'http' })[0]
+    $binding = @($Definition.bindings | Where-Object { $_.protocol -eq 'https' })[0]
     if (-not $binding) {
         $binding = @($Definition.bindings)[0]
     }
@@ -491,14 +529,18 @@ function Test-SiteHealth {
     elseif ($address.Contains(':')) {
         $address = "[$address]"
     }
+    $url = "$($binding.protocol)://${address}:$($binding.port)$path"
 
-    # TLS checks the certificate against the name in the URL, so HTTPS goes to the host name. HTTP goes to the
-    # server's own address and names the host in the Host header, so it works without DNS.
-    if ($binding.protocol -eq 'https' -and $binding.hostName) {
-        $url = "https://$($binding.hostName):$($binding.port)$path"
+    # A wildcard host name matches any name that ends the same way, such as health-check.contoso.local for
+    # *.contoso.local. With SNI, the Host header also picks the certificate.
+    $hostHeader = $null
+    if ($binding.hostName) {
+        $hostHeader = ($binding.hostName -replace '^\*', 'health-check') + ":$($binding.port)"
     }
-    else {
-        $url = "$($binding.protocol)://${address}:$($binding.port)$path"
+
+    $thumbprint = $null
+    if ($binding.protocol -eq 'https') {
+        $thumbprint = (Find-BindingCertificate $binding).Thumbprint
     }
 
     if ([Net.ServicePointManager]::SecurityProtocol -ne [Net.SecurityProtocolType]::SystemDefault) {
@@ -512,8 +554,14 @@ function Test-SiteHealth {
         $request = [Net.HttpWebRequest]::Create($url)
         $request.Timeout = 10000
         $request.AllowAutoRedirect = $false
-        if ($binding.protocol -eq 'http' -and $binding.hostName) {
-            $request.Host = "$($binding.hostName):$($binding.port)"
+        if ($hostHeader) {
+            $request.Host = $hostHeader
+        }
+        if ($thumbprint) {
+            $request.ServerCertificateValidationCallback = {
+                param($sender, $certificate)
+                $certificate.GetCertHashString() -eq $thumbprint
+            }.GetNewClosure()
         }
 
         try {

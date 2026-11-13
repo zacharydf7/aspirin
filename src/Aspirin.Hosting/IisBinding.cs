@@ -27,8 +27,8 @@ public sealed record IisBinding
 
     /// <summary>
     /// For HTTPS, the subject of the certificate, as Windows shows it, such as <c>CN=web.contoso.local</c>. The
-    /// installer picks the newest certificate with that subject that hasn't expired and has a private key, so a renewed
-    /// certificate is used without building a new package.
+    /// installer picks the newest certificate with that subject that is currently valid and has a private key, so a
+    /// renewed certificate is used without building a new package.
     /// </summary>
     public string? CertificateSubject { get; private init; }
 

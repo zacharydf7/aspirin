@@ -39,7 +39,7 @@ public sealed class InstallerTests : IAsyncDisposable
         var result = await RunScriptAsync(_package.Root, "install.ps1", "-WhatIf", "-SettingsFile", _settingsFile);
 
         Assert.True(result.ExitCode == 0, result.Output);
-        Assert.Contains($"Would create the Windows service '{ServiceName}' (version 1.2.3)", result.Output);
+        Assert.Matches($@"Would create the Windows service '{ServiceName}' \(version 1\.2\.3(\+[0-9a-f]{{40}})?\)", result.Output);
         Assert.Contains("ConnectionStrings__sampledb, ", result.Output);
         Assert.DoesNotContain("from-the-settings-file", result.Output);
     }

@@ -14,7 +14,8 @@ public class PackageTests(PublishedPackage package)
 
         Assert.Equal(1, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("worker", resource.GetProperty("name").GetString());
-        Assert.Equal("1.2.3", resource.GetProperty("version").GetString());
+        // Inside a git repository the SDK appends the commit to the version: 1.2.3+<commit>.
+        Assert.Matches(@"^1\.2\.3(\+[0-9a-f]{40})?$", resource.GetProperty("version").GetString());
         Assert.Equal("HandoffSampleWorker", service.GetProperty("serviceName").GetString());
         Assert.Equal("Sample.Worker.exe", service.GetProperty("executable").GetString());
         Assert.Equal(@"C:\Program Files\HandoffSampleWorker", service.GetProperty("installPath").GetString());
